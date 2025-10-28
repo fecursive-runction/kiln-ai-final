@@ -1,0 +1,385 @@
+
+{
+  "entities": {
+    "SensorReading": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SensorReading",
+      "type": "object",
+      "description": "Represents a single sensor reading from the cement plant.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the sensor reading."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The timestamp of the sensor reading.",
+          "format": "date-time"
+        },
+        "plantId": {
+          "type": "string",
+          "description": "Reference to Plant. (Relationship: Plant 1:N SensorReading)"
+        },
+        "sensorId": {
+          "type": "string",
+          "description": "Identifier of the sensor that generated the reading."
+        },
+        "value": {
+          "type": "number",
+          "description": "The value of the sensor reading."
+        }
+      },
+      "required": [
+        "id",
+        "timestamp",
+        "plantId",
+        "sensorId",
+        "value"
+      ]
+    },
+    "RawMaterialBatch": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RawMaterialBatch",
+      "type": "object",
+      "description": "Represents a batch of raw materials used in the cement production process.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the raw material batch."
+        },
+        "analysisTimestamp": {
+          "type": "string",
+          "description": "The timestamp of the raw material analysis.",
+          "format": "date-time"
+        },
+        "plantId": {
+          "type": "string",
+          "description": "Reference to Plant. (Relationship: Plant 1:N RawMaterialBatch)"
+        },
+        "batchId": {
+          "type": "string",
+          "description": "Identifier of the raw material batch."
+        },
+        "composition": {
+          "type": "string",
+          "description": "Chemical composition of the raw material batch as JSON string."
+        }
+      },
+      "required": [
+        "id",
+        "analysisTimestamp",
+        "plantId",
+        "batchId",
+        "composition"
+      ]
+    },
+    "ProductionMetric": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ProductionMetric",
+      "type": "object",
+      "description": "Represents aggregated production metrics for the cement plant.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Unique identifier for the production metric record.",
+          "readOnly": true
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The timestamp of the production metric.",
+          "format": "date-time"
+        },
+        "plant_id": {
+          "type": "string",
+          "description": "Reference to Plant. (Relationship: Plant 1:N ProductionMetric)"
+        },
+        "kiln_temp": {
+          "type": "number",
+          "description": "Kiln temperature in Celsius"
+        },
+        "feed_rate": {
+          "type": "number",
+          "description": "Raw material feed rate in tons per hour"
+        },
+        "lsf": {
+          "type": "number",
+          "description": "Lime Saturation Factor, a quality indicator for the raw mix."
+        },
+        "cao": {
+          "type": "number",
+          "description": "Percentage of Calcium Oxide (CaO) in the raw mix."
+        },
+        "sio2": {
+          "type": "number",
+          "description": "Percentage of Silicon Dioxide (SiO2) in the raw mix."
+        },
+        "al2o3": {
+          "type": "number",
+          "description": "Percentage of Aluminum Oxide (Al2O3) in the raw mix."
+        },
+        "fe2o3": {
+          "type": "number",
+          "description": "Percentage of Iron(III) Oxide (Fe2O3) in the raw mix."
+        },
+        "c3s": {
+          "type": "number",
+          "description": "Percentage of Tricalcium Silicate (C₃S) in the clinker."
+        },
+        "c2s": {
+          "type": "number",
+          "description": "Percentage of Dicalcium Silicate (C₂S) in the clinker."
+        },
+        "c3a": {
+          "type": "number",
+          "description": "Percentage of Tricalcium Aluminate (C₃A) in the clinker."
+        },
+        "c4af": {
+          "type": "number",
+          "description": "Percentage of Tetracalcium Aluminoferrite (C₄AF) in the clinker."
+        }
+      },
+      "required": [
+        "timestamp",
+        "plant_id",
+        "kiln_temp",
+        "feed_rate",
+        "lsf",
+        "cao",
+        "sio2",
+        "al2o3",
+        "fe2o3",
+        "c3s",
+        "c2s",
+        "c3a",
+        "c4af"
+      ]
+    },
+    "AiRecommendation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AiRecommendation",
+      "type": "object",
+      "description": "Represents an AI-generated recommendation for optimizing cement production.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AI recommendation."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The timestamp of the AI recommendation.",
+          "format": "date-time"
+        },
+        "plantId": {
+          "type": "string",
+          "description": "Reference to Plant. (Relationship: Plant 1:N AiRecommendation)"
+        },
+        "parameters": {
+          "type": "string",
+          "description": "Suggested parameters as JSON string."
+        },
+        "predictedOutcomes": {
+          "type": "string",
+          "description": "Predicted outcomes as JSON string."
+        },
+        "implementationStatus": {
+          "type": "string",
+          "description": "The implementation status of the AI recommendation."
+        },
+        "actualOutcomes": {
+          "type": "string",
+          "description": "Actual outcomes after implementing the recommendation, as JSON string."
+        }
+      },
+      "required": [
+        "id",
+        "timestamp",
+        "plantId",
+        "parameters",
+        "predictedOutcomes",
+        "implementationStatus"
+      ]
+    },
+    "Plant": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Plant",
+      "type": "object",
+      "description": "Represents a cement plant.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the cement plant."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the cement plant."
+        },
+        "location": {
+          "type": "string",
+          "description": "The location of the cement plant."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of the cement plant (e.g., Integrated Dry Process)."
+        },
+        "productionCapacityTpd": {
+          "type": "number",
+          "description": "The production capacity of the cement plant in tons per day."
+        },
+        "commissionedDate": {
+          "type": "string",
+          "description": "The date when the cement plant was commissioned.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "location",
+        "type",
+        "productionCapacityTpd",
+        "commissionedDate"
+      ]
+    },
+    "Alert": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Alert",
+      "type": "object",
+      "description": "Represents an alert generated by the system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the alert."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The timestamp of the alert.",
+          "format": "date-time"
+        },
+        "severity": {
+          "type": "string",
+          "description": "The severity of the alert (e.g., CRITICAL, WARNING)."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message of the alert."
+        },
+        "sensorId": {
+          "type": "string",
+          "description": "The ID of the sensor that triggered the alert."
+        },
+        "value": {
+          "type": "number",
+          "description": "The value of the sensor at the time of the alert."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the alert (e.g., new, acknowledged)."
+        },
+        "plantId": {
+          "type": "string",
+          "description": "Reference to Plant. (Relationship: Plant 1:N Alert)"
+        }
+      },
+      "required": [
+        "id",
+        "timestamp",
+        "severity",
+        "message",
+        "sensorId",
+        "value",
+        "status",
+        "plantId"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user.",
+          "format": "email"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The display name of the user."
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user (e.g., operator, engineer, admin)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The timestamp when the user was created.",
+          "format": "date-time"
+        },
+        "plantIds": {
+          "type": "array",
+          "description": "References to Plants. (Relationship: User N:N Plant)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "displayName",
+        "role",
+        "createdAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/plant-metrics/live",
+        "definition": {
+          "entityName": "ProductionMetric",
+          "schema": {
+            "$ref": "#/backend/entities/ProductionMetric"
+          },
+          "description": "Stores the single, most recent live metric reading for the entire plant."
+        }
+      },
+      {
+        "path": "/production_metrics/{metricId}",
+        "definition": {
+          "entityName": "ProductionMetric",
+          "schema": {
+            "$ref": "#/backend/entities/ProductionMetric"
+          },
+          "description": "Stores historical production metrics. Each document is a snapshot in time."
+        }
+      },
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

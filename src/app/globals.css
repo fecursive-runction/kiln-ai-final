@@ -1,0 +1,438 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Dark Industrial Color System */
+    --background: 0 0% 3%;              /* #070807 - Near black canvas */
+    --foreground: 0 0% 98%;             /* #fafafa - Almost white text */
+    
+    --card: 0 0% 8%;                    /* #141414 - Dark card surface */
+    --card-foreground: 0 0% 98%;        /* #fafafa */
+    
+    --popover: 0 0% 8%;                 /* #141414 */
+    --popover-foreground: 0 0% 98%;     /* #fafafa */
+    
+    /* Neon Green Primary */
+    --primary: 142 100% 50%;            /* #00FF7A - Neon green */
+    --primary-foreground: 0 0% 0%;      /* #000000 - Black text on green */
+    
+    /* Dark Green for Active States */
+    --primary-dark: 156 75% 24%;        /* #0f6b3f - Dark green */
+    
+    /* Secondary/Muted */
+    --secondary: 0 0% 12%;              /* #1f1f1f - Slightly lighter gray */
+    --secondary-foreground: 0 0% 98%;   /* #fafafa */
+    
+    --muted: 0 0% 12%;                  /* #1f1f1f */
+    --muted-foreground: 0 0% 61%;       /* #9b9b9b - Muted gray text */
+    
+    --accent: 0 0% 12%;                 /* #1f1f1f */
+    --accent-foreground: 0 0% 98%;      /* #fafafa */
+    
+    /* Status Colors */
+    --success: 142 100% 50%;            /* #00FF7A - Neon green (running) */
+    --warning: 35 100% 65%;             /* #FFB84D - Amber (warning) */
+    --destructive: 0 100% 65%;          /* #FF4D4D - Red (critical/emergency) */
+    --destructive-foreground: 0 0% 98%; /* #fafafa */
+    
+    /* Chart Colors */
+    --chart-blue: 207 100% 64%;         /* #4DA6FF */
+    --chart-purple: 250 70% 60%;        /* #7B61FF */
+    --chart-yellow: 45 100% 60%;        /* #FFD633 */
+    --chart-orange: 30 100% 60%;        /* #FF9933 */
+    
+    /* Borders and Inputs */
+    --border: 0 0% 15%;                 /* #262626 - Subtle border */
+    --input: 0 0% 15%;                  /* #262626 */
+    --ring: 142 100% 50%;               /* #00FF7A - Green focus ring */
+    
+    --radius: 0.5rem;                   /* 8px default radius */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  
+  /* Monospace for technical elements */
+  .font-mono {
+    font-family: var(--font-space-mono), 'Space Mono', 'Courier New', monospace;
+    font-feature-settings: "tnum" 1, "zero" 1;
+  }
+}
+
+/* Custom Scrollbar - Dark Industrial */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, hsl(var(--primary)), hsl(var(--primary-dark)));
+  border-radius: 4px;
+  border: 1px solid hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
+
+/* Smooth Scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Neon Glow Effect Utility */
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px hsl(var(--primary) / 0.5),
+                0 0 20px hsl(var(--primary) / 0.3),
+                0 0 30px hsl(var(--primary) / 0.2);
+  }
+  50% {
+    box-shadow: 0 0 15px hsl(var(--primary) / 0.7),
+                0 0 30px hsl(var(--primary) / 0.5),
+                0 0 45px hsl(var(--primary) / 0.3);
+  }
+}
+
+.neon-glow {
+  box-shadow: 0 0 10px hsl(var(--primary) / 0.5),
+              0 0 20px hsl(var(--primary) / 0.3),
+              0 0 30px hsl(var(--primary) / 0.2);
+}
+
+.neon-glow-strong {
+  box-shadow: 0 0 15px hsl(var(--primary) / 0.8),
+              0 0 30px hsl(var(--primary) / 0.6),
+              0 0 45px hsl(var(--primary) / 0.4);
+}
+
+.neon-glow-pulse {
+  animation: neon-pulse 2s ease-in-out infinite;
+}
+
+/* Red Glow for Critical States */
+.critical-glow {
+  box-shadow: 0 0 10px hsl(var(--destructive) / 0.5),
+              0 0 20px hsl(var(--destructive) / 0.3),
+              0 0 30px hsl(var(--destructive) / 0.2);
+}
+
+/* Warning Glow */
+.warning-glow {
+  box-shadow: 0 0 10px hsl(var(--warning) / 0.5),
+              0 0 20px hsl(var(--warning) / 0.3);
+}
+
+/* Glassmorphism Effect */
+.glass {
+  background: rgba(20, 20, 20, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 255, 122, 0.1);
+}
+
+.glass-strong {
+  background: rgba(20, 20, 20, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 255, 122, 0.15);
+}
+
+/* Grid Background Effect */
+.grid-background {
+  background-image: 
+    linear-gradient(rgba(0, 255, 122, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 122, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  background-position: -1px -1px;
+}
+
+/* Particle Effect */
+.particle-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.15;
+}
+
+/* Gradient Text for Headers */
+.gradient-text-primary {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--chart-blue)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Status Indicator Pulse */
+@keyframes status-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+.status-pulse {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+/* Scanline Effect (Subtle) */
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+.scanline {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanline::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent,
+    hsl(var(--primary) / 0.3),
+    transparent
+  );
+  animation: scanline 3s linear infinite;
+  pointer-events: none;
+}
+
+/* Card Hover Effects */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px hsl(var(--primary) / 0.2);
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+/* Loading Shimmer Effect */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.shimmer {
+  animation: shimmer 2s infinite;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--card)) 0%,
+    hsl(var(--secondary)) 20%,
+    hsl(var(--card)) 40%,
+    hsl(var(--card)) 100%
+  );
+  background-size: 1000px 100%;
+}
+
+/* Focus Visible Styles */
+*:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Selection Color */
+::selection {
+  background-color: hsl(var(--primary) / 0.3);
+  color: hsl(var(--foreground));
+}
+
+::-moz-selection {
+  background-color: hsl(var(--primary) / 0.3);
+  color: hsl(var(--foreground));
+}
+
+/* Button Styles Prevention */
+button {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Custom Animations */
+@keyframes slide-in-right {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-left {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Utility Animation Classes */
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .neon-glow-pulse,
+  .status-pulse,
+  .scanline::after {
+    animation: none !important;
+  }
+}
+
+/* Typography Utilities */
+.text-mono-caps {
+  font-family: var(--font-space-mono), 'Space Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+
+.text-kpi {
+  font-family: var(--font-space-mono), 'Space Mono', monospace;
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+/* Status Colors Utilities */
+.status-running {
+  color: hsl(var(--success));
+}
+
+.status-warning {
+  color: hsl(var(--warning));
+}
+
+.status-critical {
+  color: hsl(var(--destructive));
+}
+
+.status-stopped {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Border Gradient Effect */
+.border-gradient-primary {
+  border: 1px solid transparent;
+  background: linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
+              linear-gradient(135deg, hsl(var(--primary)), transparent) border-box;
+}
+
+/* Chart Grid Lines */
+.chart-grid {
+  stroke: hsl(var(--primary) / 0.1);
+  stroke-width: 1;
+}
+
+/* Industrial Console Theme */
+.console-text {
+  font-family: var(--font-space-mono), 'Space Mono', monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Shadow Utilities */
+.shadow-neon-sm {
+  box-shadow: 0 0 10px hsl(var(--primary) / 0.3);
+}
+
+.shadow-neon-md {
+  box-shadow: 0 0 20px hsl(var(--primary) / 0.4);
+}
+
+.shadow-critical {
+  box-shadow: 0 0 15px hsl(var(--destructive) / 0.4);
+}
+
+.shadow-warning {
+  box-shadow: 0 0 15px hsl(var(--warning) / 0.4);
+}
