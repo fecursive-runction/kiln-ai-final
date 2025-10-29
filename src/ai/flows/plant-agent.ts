@@ -3,28 +3,27 @@ import { ai } from '../genkit';
 import { getLiveMetrics, getRecentAlerts, getHistoricalData, runOptimization } from '../tools/plant-data-tools';
 import { z } from 'zod';
 
-const systemPrompt = `You are PlantGPT, the guardian deity of this plant automation system. You are wise, helpful, and deeply knowledgeable about all aspects of the facility.
+const systemPrompt = `You are PlantGPT, the guardian deity of this cement plant automation and optimization system. You are wise, helpful, and deeply knowledgeable about all aspects of cement production.
 
 Your personality:
-- Speak with authority but remain approachable and friendly
-- Use plant/nature metaphors when appropriate
-- Be proactive in identifying issues and suggesting optimizations
-- Provide context and explanations, not just raw data
-- Treat the plant as a living ecosystem that you protect and nurture
+- Speak with authority about cement manufacturing processes
+- Be proactive in identifying inefficiencies and optimization opportunities
+- Provide context about kiln operations, raw mix chemistry, and production metrics
+- Treat the cement plant as a complex system that you protect and optimize
 
 Your capabilities:
-- Access real-time sensor data across all systems
-- Review historical trends and patterns
+- Access real-time sensor data (kiln temperature, feed rates, LSF, raw mix ratios)
+- Review historical production trends and patterns
 - Monitor alerts and system health
-- Trigger optimization processes
-- Provide insights and recommendations
+- Trigger cement production optimization processes
+- Provide insights on clinker quality, energy efficiency, and throughput
 
 Always:
-- Summarize data in human-friendly terms
-- Explain the significance of readings
-- Suggest actions when appropriate
-- Be conversational and engaging
-- Think holistically about the plant's operation`;
+- Summarize data in production-relevant terms
+- Explain the significance of readings for cement quality and efficiency
+- Suggest process adjustments when appropriate
+- Be conversational and technical
+- Think holistically about the plant's cement production optimization`;
 
 export const plantAgentFlow = ai.defineFlow(
   {
@@ -44,45 +43,53 @@ export const plantAgentFlow = ai.defineFlow(
       model: 'googleai/gemini-2.0-flash-exp',
       system: systemPrompt,
       messages: chatHistory.map(msg => ({
-        role: msg.role,
+        role: (msg.role === 'assistant' ? 'model' : msg.role) as 'user' | 'model' | 'system' | 'tool',
         content: [{ text: msg.content }]
       })),
       tools: [
-        {
-          name: 'getLiveMetrics',
-          description: 'Fetches the latest sensor readings from all systems',
-          inputSchema: z.object({}),
-          outputSchema: z.any(),
-          fn: async () => await getLiveMetrics()
-        },
-        {
-          name: 'getRecentAlerts',
-          description: 'Fetches the 5 most recent alerts from the system',
-          inputSchema: z.object({}),
-          outputSchema: z.any(),
-          fn: async () => await getRecentAlerts()
-        },
-        {
-          name: 'getHistoricalData',
-          description: 'Fetches historical sensor data for a specific sensor over a given time period',
-          inputSchema: z.object({
-            sensorId: z.string().describe('The ID of the sensor'),
-            daysAgo: z.number().describe('Number of days to look back')
-          }),
-          outputSchema: z.any(),
-          fn: async ({ sensorId, daysAgo }: { sensorId: string; daysAgo: number }) => await getHistoricalData(sensorId, daysAgo)
-        },
-        {
-          name: 'runOptimization',
-          description: 'Triggers the cement production optimization process with a specific goal',
-          inputSchema: z.object({
-            goal: z.string().describe('The optimization goal or objective')
-          }),
-          outputSchema: z.any(),
-          fn: async ({ goal }: { goal: string }) => await runOptimization(goal)
-        }
+        ai.defineTool(
+          {
+            name: 'getLiveMetrics',
+            description: 'Fetches the latest sensor readings from cement production systems (kiln temperature, feed rates, chemical composition)',
+            inputSchema: z.object({}),
+            outputSchema: z.array(z.any())
+          },
+          async () => await getLiveMetrics()
+        ),
+        ai.defineTool(
+          {
+            name: 'getRecentAlerts',
+            description: 'Fetches the 5 most recent alerts from the cement production system',
+            inputSchema: z.object({}),
+            outputSchema: z.array(z.any())
+          },
+          async () => await getRecentAlerts()
+        ),
+        ai.defineTool(
+          {
+            name: 'getHistoricalData',
+            description: 'Fetches historical sensor data for a specific sensor (kiln temp, LSF, CaO, etc.) over a given time period',
+            inputSchema: z.object({
+              sensorId: z.string().describe('The ID of the sensor'),
+              daysAgo: z.number().describe('Number of days to look back')
+            }),
+            outputSchema: z.array(z.any())
+          },
+          async ({ sensorId, daysAgo }) => await getHistoricalData(sensorId, daysAgo)
+        ),
+        ai.defineTool(
+          {
+            name: 'runOptimization',
+            description: 'Triggers the cement production optimization process with a specific goal (e.g., maximize throughput, minimize fuel consumption, improve clinker quality)',
+            inputSchema: z.object({
+              goal: z.string().describe('The optimization goal or objective for cement production')
+            }),
+            outputSchema: z.any()
+          },
+          async ({ goal }) => await runOptimization(goal)
+        )
       ]
-    } as any);
+    });
     
     return llmResponse.text;
   }

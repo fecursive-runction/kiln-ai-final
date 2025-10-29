@@ -2,14 +2,14 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Leaf, Settings, Droplets, TrendingUp, User, Bot } from 'lucide-react';
+import { Send, Flame, Settings, TrendingUp, TrendingDown, User, Bot } from 'lucide-react';
 import { askPlantGuardian } from '../actions';
 
 export default function PlantGPT() {
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date }>>([
     {
       role: 'assistant',
-      content: '🌿 Welcome to PlantGPT! I\'m your plant automation guardian. I can help you with sensors, irrigation, analytics, and all system operations. What would you like to know?',
+      content: '🔥 Welcome to PlantGPT! I\'m your cement plant optimization guardian. I can help you with kiln operations, raw mix chemistry, production analytics, and process optimization. What would you like to know?',
       timestamp: new Date()
     }
   ]);
@@ -77,9 +77,9 @@ export default function PlantGPT() {
   };
 
   const quickActions = [
-    { icon: Droplets, text: 'Check moisture levels', query: 'What are the current moisture levels?' },
-    { icon: Settings, text: 'System status', query: 'What is the system status?' },
-    { icon: TrendingUp, text: 'View analytics', query: 'Show me analytics data' }
+    { icon: Flame, text: 'Kiln temperature status', query: 'What is the current kiln temperature?' },
+    { icon: Settings, text: 'Production metrics', query: 'Show me current production metrics' },
+    { icon: TrendingUp, text: 'Optimize production', query: 'How can I optimize cement production?' }
   ];
 
   const handleQuickAction = (query: string) => {
@@ -87,17 +87,17 @@ export default function PlantGPT() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 p-4">
       <div className="max-w-4xl mx-auto h-[calc(100vh-2rem)] flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-white">
+        <div className="bg-gradient-to-r from-orange-600 to-red-600 p-6 text-white">
           <div className="flex items-center gap-3">
             <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
-              <Leaf className="w-8 h-8" />
+              <Flame className="w-8 h-8" />
             </div>
             <div>
               <h1 className="text-2xl font-bold">PlantGPT</h1>
-              <p className="text-green-100 text-sm">Your Plant Automation Guardian</p>
+              <p className="text-orange-100 text-sm">Your Cement Plant Optimization Guardian</p>
             </div>
           </div>
         </div>
@@ -112,7 +112,7 @@ export default function PlantGPT() {
               <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                 message.role === 'user' 
                   ? 'bg-blue-500' 
-                  : 'bg-gradient-to-br from-green-500 to-emerald-500'
+                  : 'bg-gradient-to-br from-orange-500 to-red-500'
               }`}>
                 {message.role === 'user' ? (
                   <User className="w-5 h-5 text-white" />
@@ -137,7 +137,7 @@ export default function PlantGPT() {
           
           {isTyping && (
             <div className="flex gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
                 <Bot className="w-5 h-5 text-white" />
               </div>
               <div className="bg-gray-100 p-4 rounded-2xl">
@@ -162,7 +162,7 @@ export default function PlantGPT() {
                 <button
                   key={index}
                   onClick={() => handleQuickAction(action.query)}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors text-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-lg transition-colors text-sm"
                 >
                   <action.icon className="w-4 h-4" />
                   {action.text}
@@ -180,13 +180,13 @@ export default function PlantGPT() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask me anything about your plant automation system..."
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Ask me anything about cement production optimization..."
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
             <button
               onClick={handleSend}
               disabled={!input.trim() || isTyping}
-              className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               <Send className="w-5 h-5" />
             </button>
