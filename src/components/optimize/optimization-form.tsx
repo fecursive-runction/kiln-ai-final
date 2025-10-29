@@ -86,51 +86,7 @@ export function OptimizationForm({ initialMetrics }: OptimizationFormProps) {
   }, [initialMetrics?.trigger]);
 
   return (
-    <div className="space-y-6">
-      {initialMetrics && (
-        <Card className="bg-primary/5 border-primary/30">
-          <CardHeader>
-            <CardTitle className="text-sm">Current Plant State</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-              {initialMetrics.kilnTemperature && (
-                <div>
-                  <span className="text-muted-foreground">Temperature:</span>
-                  <span className="ml-2 font-mono font-bold text-primary">
-                    {formatNumber(initialMetrics.kilnTemperature, { decimals: 1 })}°C
-                  </span>
-                </div>
-              )}
-              {initialMetrics.feedRate && (
-                <div>
-                  <span className="text-muted-foreground">Feed Rate:</span>
-                  <span className="ml-2 font-mono font-bold text-foreground">
-                    {formatNumber(initialMetrics.feedRate, { decimals: 1 })} TPH
-                  </span>
-                </div>
-              )}
-              {initialMetrics.lsf && (
-                <div>
-                  <span className="text-muted-foreground">LSF:</span>
-                  <span className="ml-2 font-mono font-bold text-foreground">
-                    {formatNumber(initialMetrics.lsf, { decimals: 1 })}%
-                  </span>
-                </div>
-              )}
-              {initialMetrics.cao && (
-                <div>
-                  <span className="text-muted-foreground">CaO:</span>
-                  <span className="ml-2 font-mono font-bold text-foreground">
-                    {formatNumber(initialMetrics.cao, { decimals: 2 })}%
-                  </span>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
+    <div className="space-y-4">
       <Card>
         <CardHeader className="border-b border-border">
           <CardTitle className="text-sm">Target Parameters (Optional)</CardTitle>

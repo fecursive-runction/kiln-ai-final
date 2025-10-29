@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { useData } from '@/context/DataProvider';
 import {
@@ -113,26 +112,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   return (
     <>
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"
-            onClick={onClose}
-          />
-        )}
-      </AnimatePresence>
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40"
+          onClick={onClose}
+        />
+      )}
 
-      <motion.aside
-        initial={false}
-        animate={{
-          x: isOpen ? 0 : -240,
-        }}
-        transition={{ duration: 0.3, ease: [0.22, 0.9, 0.36, 1] }}
-        className="fixed top-0 left-0 z-50 h-full w-[240px] bg-card border-r border-border flex flex-col lg:translate-x-0 glass-strong"
+      <aside
+        className={`fixed top-0 left-0 z-50 h-full w-[240px] bg-card border-r border-border flex flex-col glass-strong transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
       >
         <div className="flex items-center gap-3 p-6 border-b border-border">
           <div className="bg-primary/10 p-2 rounded-lg border border-primary/30 neon-glow">
@@ -161,10 +151,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   `}
                 >
                   {active && (
-                    <motion.div
-                      layoutId="activeTab"
+                    <div
                       className="absolute left-0 w-1 h-8 bg-primary rounded-r-full"
-                      transition={{ duration: 0.3 }}
                     />
                   )}
 
@@ -198,7 +186,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             v1.0.0 POC
           </div>
         </div>
-      </motion.aside>
+      </aside>
     </>
   );
 }

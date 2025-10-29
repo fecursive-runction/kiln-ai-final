@@ -73,7 +73,6 @@ export function Header({ onMenuClick, isSidebarOpen }: HeaderProps) {
             variant="ghost"
             size="icon"
             onClick={onMenuClick}
-            className="lg:hidden"
           >
             {isSidebarOpen ? (
               <X className="w-5 h-5" />

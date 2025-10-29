@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -49,8 +48,8 @@ export function AlertsFeed({ alerts, liveMetrics }: AlertsFeedProps) {
   const getAnimationDelay = (index: number) => index * 0.1;
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="border-b border-border">
+    <Card className="flex flex-col max-h-[600px]">
+      <CardHeader className="border-b border-border flex-shrink-0">
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bell className="w-5 h-5 text-primary" />
@@ -63,30 +62,19 @@ export function AlertsFeed({ alerts, liveMetrics }: AlertsFeedProps) {
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto p-4">
         {alerts.length === 0 ? (
-          <motion.div 
+          <div 
             className="text-center py-12"
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5 }}
           >
-            <motion.div 
+            <div 
               className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success/20 mb-4 border border-success/30"
-              animate={{ 
-                scale: [1, 1.05, 1],
-              }}
-              transition={{ 
-                repeat: Infinity, 
-                duration: 3,
-                ease: "easeInOut"
-              }}
             >
               <span className="text-3xl">✓</span>
-            </motion.div>
+            </div>
             <p className="text-foreground font-bold text-sm mb-1">All Systems Normal</p>
             <p className="text-xs text-muted-foreground">
               No alerts detected
             </p>
-          </motion.div>
+          </div>
         ) : (
           <div className="space-y-3">
             {alerts.map((alert, index) => {
@@ -96,20 +84,13 @@ export function AlertsFeed({ alerts, liveMetrics }: AlertsFeedProps) {
                 liveMetrics;
 
               return (
-                <motion.div
+                <div
                   key={alert.id}
-                  initial={{ x: 20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{
-                    duration: 0.36,
-                    delay: getAnimationDelay(index),
-                    ease: [0.22, 0.9, 0.36, 1],
-                  }}
-                  onClick={() => handleAlertClick(alert)}
                   className={`
                     p-3 rounded-lg border-l-4 ${style.borderColor} bg-secondary/50
                     ${isActionable ? 'cursor-pointer hover:bg-secondary transition-colors' : ''}
                   `}
+                  onClick={() => handleAlertClick(alert)}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`mt-0.5 ${
@@ -149,7 +130,7 @@ export function AlertsFeed({ alerts, liveMetrics }: AlertsFeedProps) {
                       )}
                     </div>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>

@@ -25,7 +25,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onClose={() => setIsSidebarOpen(false)}
       />
 
-      <div className="lg:pl-[240px] transition-all duration-300">
+      <div className="transition-all duration-300">
         <Header
           onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
           isSidebarOpen={isSidebarOpen}

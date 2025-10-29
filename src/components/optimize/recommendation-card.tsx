@@ -1,6 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { useActionState, useEffect } from 'react';
 import { useFormStatus } from 'react-dom';
 import { applyOptimization } from '@/app/actions';
@@ -18,6 +17,7 @@ import {
   FileText,
   AlertTriangle,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface OptimizationRecommendation {
   recommendationId: string;
