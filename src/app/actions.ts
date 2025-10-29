@@ -5,6 +5,7 @@ import { generateAlerts } from '@/ai/flows/generate-alerts';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabaseClient';
 import { plantAgentFlow } from '@/ai/flows/plant-agent'; // ✅ updated import
+import { Action } from 'genkit';
 
 export async function getLiveMetrics() {
   try {
@@ -223,20 +224,67 @@ export async function applyOptimization(prevState: any, formData: FormData) {
   }
 }
 
-export async function askPlantGuardian(chatHistory: Array<{ role: 'user' | 'assistant'; content: string }>) {
+export async function askPlantGuardian(
+  chatHistory: Array<{ role: 'user' | 'assistant'; content: string }>
+) {
   try {
-    const response = await plantAgentFlow({ chatHistory });
-    return { status: 'success', data: response };
+    // FIX: You MUST use runFlow to execute a Genkit flow
+    const response = await runFlow(plantAgentFlow, { chatHistory });
+    return { status: 'success' as const, data: response };
   } catch (error) {
     console.error('PlantGPT error:', error);
-    return { 
-      status: 'error', 
-      message: error instanceof Error ? error.message : 'An unknown error occurred' 
+    return {
+      status: 'error' as const,
+      message:
+        error instanceof Error ? error.message : 'An unknown error occurred',
     };
   }
 }
 
+/**
+ * Execute a Genkit Action flow.
+ *
+ * The function attempts several common invocation patterns:
+ * - If the flow is a function, call it directly.
+ * - If the flow has a `.run()` / `.execute()` / `.start()` method, call that.
+ * - If the result is an async iterable, consume it and return the last yielded value.
+ */
+async function runFlow(flow: any, input: any): Promise<any> {
+  const isAsyncIterable = (v: any): v is AsyncIterable<any> =>
+    v != null && typeof v[Symbol.asyncIterator] === 'function';
 
+  try {
+    let result: any;
+
+    if (typeof flow === 'function') {
+      // Some genkit flows may be plain functions
+      result = await flow(input);
+    } else if (flow && typeof flow.run === 'function') {
+      result = await flow.run(input);
+    } else if (flow && typeof flow.execute === 'function') {
+      result = await flow.execute(input);
+    } else if (flow && typeof flow.start === 'function') {
+      result = await flow.start(input);
+    } else {
+      throw new Error('Unsupported flow shape: unable to execute flow');
+    }
+
+    // If the flow returns an async iterator (streaming), consume it and return last value
+    if (isAsyncIterable(result)) {
+      let last: any = undefined;
+      for await (const chunk of result) {
+        last = chunk;
+      }
+      return last;
+    }
+
+    return result;
+  } catch (err) {
+    // Normalize and rethrow so callers can handle the error consistently
+    if (err instanceof Error) throw err;
+    throw new Error(String(err));
+  }
+}
 // 'use server';
 
 // import { optimizeCementProduction, type OptimizeCementProductionInput } from '@/ai/flows/optimize-cement-production';

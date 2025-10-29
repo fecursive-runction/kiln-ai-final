@@ -1,14 +1,24 @@
-// src/ai/tools/plant-data-tools.ts
-import { supabase } from '@/lib/supabaseClient';
-import { optimizeCementProduction } from '../flows/optimize-cement-production';
+//
+// FILE: src/ai/tools/plant-data-tools.ts (Corrected)
+//
+
+import { supabase } from '@/lib/supabaseClient'; // CITE: fecursive-runction/kiln-ai-final/kiln-ai-final-6c4ad047dd097f90294ec7a1e57cada0dae72532/src/lib/supabaseClient.ts
+// FIX 1: Import the *function* and *type* from the flow file
+import {
+  optimizeCementProduction,
+  type OptimizeCementProductionInput,
+} from '../flows/optimize-cement-production'; // CITE: fecursive-runction/kiln-ai-final/kiln-ai-final-6c4ad047dd097f90294ec7a1e57cada0dae72532/src/ai/flows/optimize-cement-production.ts
+
+// FIX 2: Import the getLiveMetrics server action to get the data we need
+import { getLiveMetrics as getLiveMetricsFromAction } from '@/app/actions'; // CITE: fecursive-runction/kiln-ai-final/kiln-ai-final-6c4ad047dd097f90294ec7a1e57cada0dae72532/src/app/actions.ts
 
 export async function getLiveMetrics() {
   const { data, error } = await supabase
-    .from('sensor_readings')
+    .from('production_metrics') // Using table from actions.ts
     .select('*')
     .order('timestamp', { ascending: false })
     .limit(10);
-  
+
   if (error) throw error;
   return data;
 }
@@ -19,7 +29,7 @@ export async function getRecentAlerts() {
     .select('*')
     .order('created_at', { ascending: false })
     .limit(5);
-  
+
   if (error) throw error;
   return data;
 }
@@ -27,29 +37,44 @@ export async function getRecentAlerts() {
 export async function getHistoricalData(sensorId: string, daysAgo: number) {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - daysAgo);
-  
+
   const { data, error } = await supabase
-    .from('sensor_readings')
+    .from('production_metrics') // Using table from actions.ts
     .select('*')
-    .eq('sensor_id', sensorId)
+    .eq('sensor_id', sensorId) // Assuming sensor_id is a column
     .gte('timestamp', startDate.toISOString())
     .order('timestamp', { ascending: true });
-  
+
   if (error) throw error;
   return data;
 }
 
+//
+// FIX 3: This function is now correct
+//
 export async function runOptimization(goal: string) {
-  const result = await optimizeCementProduction({
-    plantId: 'plant-1',
-    kilnTemperature: 1450,
-    feedRate: 100,
-    lsf: 0.92,
-    cao: 65,
-    sio2: 22,
-    al2o3: 5,
-    fe2o3: 3,
-    constraints: [goal]
-  });
-  return result;
+  try {
+    // 1. Get the current plant status from the server action
+    const liveMetrics = await getLiveMetricsFromAction();
+
+    // 2. Build the full input object
+    const aiInput: OptimizeCementProductionInput = {
+      plantId: 'poc_plant_01',
+      kilnTemperature: liveMetrics.kilnTemperature,
+      feedRate: liveMetrics.feedRate,
+      lsf: liveMetrics.lsf,
+      cao: liveMetrics.cao,
+      sio2: liveMetrics.sio2,
+      al2o3: liveMetrics.al2o3,
+      fe2o3: liveMetrics.fe2o3,
+      constraints: [goal], // Use the agent's goal as the constraint
+    };
+
+    // 3. Call the function directly
+    const result = await optimizeCementProduction(aiInput);
+    return result;
+  } catch (error: any) {
+    console.error('Error in runOptimization tool:', error);
+    return { error: error.message };
+  }
 }
