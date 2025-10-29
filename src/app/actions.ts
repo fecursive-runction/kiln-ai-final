@@ -3,7 +3,8 @@
 import { optimizeCementProduction, type OptimizeCementProductionInput } from '@/ai/flows/optimize-cement-production';
 import { generateAlerts } from '@/ai/flows/generate-alerts';
 import { z } from 'zod';
-import { supabase } from '@/lib/supabaseClient'; // ✅ updated import
+import { supabase } from '@/lib/supabaseClient';
+import { plantAgentFlow } from '@/ai/flows/plant-agent'; // ✅ updated import
 
 export async function getLiveMetrics() {
   try {
@@ -221,6 +222,20 @@ export async function applyOptimization(prevState: any, formData: FormData) {
     return { success: false, message: 'Failed to apply optimization.' };
   }
 }
+
+export async function askPlantGuardian(chatHistory: Array<{ role: 'user' | 'assistant'; content: string }>) {
+  try {
+    const response = await plantAgentFlow({ chatHistory });
+    return { status: 'success', data: response };
+  } catch (error) {
+    console.error('PlantGPT error:', error);
+    return { 
+      status: 'error', 
+      message: error instanceof Error ? error.message : 'An unknown error occurred' 
+    };
+  }
+}
+
 
 // 'use server';
 
