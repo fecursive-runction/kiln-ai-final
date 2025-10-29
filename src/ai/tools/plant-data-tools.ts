@@ -34,21 +34,33 @@ export async function getRecentAlerts() {
   return data;
 }
 
-export async function getHistoricalData(sensorId: string, daysAgo: number) {
+export async function getHistoricalData(metricName: string, daysAgo: number) {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - daysAgo);
 
+  // Validate the metricName to prevent SQL injection and errors
+  // These *must* match your database column names
+  const allowedMetrics = ['kiln_temp', 'feed_rate', 'lsf', 'cao', 'sio2', 'al2o3', 'fe2o3', 'c3s', 'c2s', 'c3a', 'c4af'];
+  if (!allowedMetrics.includes(metricName)) {
+    throw new Error(`Invalid metric name: ${metricName}.`);
+  }
+
   const { data, error } = await supabase
-    .from('production_metrics') // Using table from actions.ts
-    .select('*')
-    .eq('sensor_id', sensorId) // Assuming sensor_id is a column
+    .from('production_metrics') // CITE: fecursive-runction/kiln-ai-final/kiln-ai-final-6c4ad047dd097f90294ec7a1e57cada0dae72532/src/app/actions.ts
+    // Dynamically select the 'timestamp' and the requested metric column
+    .select(`timestamp, ${metricName}`)
     .gte('timestamp', startDate.toISOString())
     .order('timestamp', { ascending: true });
 
   if (error) throw error;
-  return data;
+  
+  // Return the data in a format the AI can understand
+    return (data as Array<Record<string, any>>).map(row => ({
+      timestamp: row.timestamp,
+      metric: metricName,
+      value: (row as any)[metricName]
+    }));
 }
-
 //
 // FIX 3: This function is now correct
 //

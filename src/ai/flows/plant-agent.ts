@@ -84,16 +84,16 @@ export const plantAgentFlow = ai.defineFlow(
         ai.defineTool(
           {
             name: 'getHistoricalData',
-            description:
-              'Fetches historical sensor data for a specific sensor (kiln temp, LSF, CaO, etc.) over a given time period',
+            description: 'Fetches historical data for a *single specific metric* (e.g., kiln_temp, lsf, cao) over a given time period.',
+            // FIX: Change 'sensorId' to 'metricName'
             inputSchema: z.object({
-              sensorId: z.string().describe('The ID of the sensor'),
-              daysAgo: z.number().describe('Number of days to look back'),
+              metricName: z.string().describe('The database column name of the metric, e.g., "kiln_temp", "lsf", "feed_rate".'),
+              daysAgo: z.number().describe('Number of days to look back')
             }),
             outputSchema: z.array(z.any()),
           },
-          async ({ sensorId, daysAgo }) =>
-            await getHistoricalData(sensorId, daysAgo)
+          // FIX: Pass the new parameters
+          async ({ metricName, daysAgo }) => await getHistoricalData(metricName, daysAgo)
         ),
         ai.defineTool(
           {
