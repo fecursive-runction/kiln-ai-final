@@ -90,7 +90,7 @@ export function OptimizationForm({ initialMetrics }: OptimizationFormProps) {
     <div className="space-y-4">
       <Card>
         <CardHeader className="border-b border-border">
-          <CardTitle className="text-sm">Target Parameters (Optional)</CardTitle>
+          <CardTitle className="text-sm">Target Parameters</CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           <form ref={formRef} action={formAction} className="space-y-6">
