@@ -65,11 +65,11 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       boxShadow: {
-        'neon-sm': '0 0 10px hsl(var(--primary) / 0.3)',
-        'neon-md': '0 0 15px hsl(var(--primary) / 0.5), 0 0 30px hsl(var(--primary) / 0.3)',
-        'neon-lg': '0 0 20px hsl(var(--primary) / 0.6), 0 0 40px hsl(var(--primary) / 0.4)',
-        'critical': '0 0 15px hsl(var(--destructive) / 0.5), 0 0 30px hsl(var(--destructive) / 0.3)',
-        'warning': '0 0 15px hsl(var(--warning) / 0.5), 0 0 30px hsl(var(--warning) / 0.3)',
+        'neon-sm': '0 0 5px hsl(var(--primary) / 0.15)',
+        'neon-md': '0 0 8px hsl(var(--primary) / 0.2)',
+        'neon-lg': '0 0 10px hsl(var(--primary) / 0.25)',
+        'critical': '0 0 8px hsl(var(--destructive) / 0.2)',
+        'warning': '0 0 8px hsl(var(--warning) / 0.2)',
       },
       keyframes: {
         "accordion-down": {

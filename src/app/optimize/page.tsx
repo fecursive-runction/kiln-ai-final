@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Sparkles, Activity } from 'lucide-react';
 import { formatNumber } from '@/lib/formatters';
 
+// src/app/optimize/page.tsx
 function OptimizationPageContent() {
   const searchParams = useSearchParams();
   const { liveMetrics, loading } = useData();
@@ -38,10 +39,10 @@ function OptimizationPageContent() {
     return (
       <div className="p-6 space-y-6">
         <Skeleton className="h-8 w-64" />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <Skeleton className="lg:col-span-3 h-96" />
-          <Skeleton className="lg:col-span-6 h-96" />
-          <Skeleton className="lg:col-span-3 h-96" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Skeleton className="h-96" />
+          <Skeleton className="h-96" />
+          <Skeleton className="h-96" />
         </div>
       </div>
     );
@@ -50,7 +51,7 @@ function OptimizationPageContent() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-3">
-        <div className="bg-primary/10 p-3 rounded-lg border border-primary/30 neon-glow">
+        <div className="bg-primary/10 p-3 rounded-lg border border-primary/30">
           <Sparkles className="w-6 h-6 text-primary" />
         </div>
         <div>
@@ -63,9 +64,9 @@ function OptimizationPageContent() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* LEFT COLUMN - Live Plant State */}
-        <div className="lg:col-span-3">
+        <div>
           <Card className="h-full">
             <CardHeader className="border-b border-border">
               <CardTitle className="flex items-center gap-2 text-sm">
@@ -165,7 +166,7 @@ function OptimizationPageContent() {
         </div>
 
         {/* MIDDLE COLUMN - Optimization Form */}
-        <div className="lg:col-span-6">
+        <div>
           <OptimizationForm
             initialMetrics={
               Object.values(initialMetrics).some((v) => v !== undefined)
@@ -176,7 +177,7 @@ function OptimizationPageContent() {
         </div>
 
         {/* RIGHT COLUMN - Placeholder for AI Results */}
-        <div className="lg:col-span-3">
+        <div>
           <Card className="h-full bg-secondary/20 border-dashed">
             <CardContent className="p-8 flex items-center justify-center h-full">
               <div className="text-center space-y-4">

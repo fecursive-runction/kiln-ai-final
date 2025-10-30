@@ -74,54 +74,69 @@ export default function HistoryPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card className="card-hover">
-          <CardHeader className="border-b border-border/50">
+          {/* MODIFICATION: Added p-4 to reduce header height */}
+          <CardHeader className="border-b border-border/50 p-4">
             <CardTitle className="flex items-center justify-between text-sm">
               <span>Avg. Temperature</span>
               <TrendingUp className="w-4 h-4 text-primary" />
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
-            <p className="text-3xl font-bold font-mono text-primary">
+          {/* MODIFICATION: Changed p-6 to p-4 */}
+          <CardContent className="p-4">
+            {/* MODIFICATION: Changed text-3xl to text-2xl */}
+            <p className="text-2xl font-bold font-mono text-primary">
               {stats.avgTemp.toFixed(1)}
-              <span className="text-lg text-muted-foreground ml-2">°C</span>
+              {/* MODIFICATION: Changed text-lg to text-base */}
+              <span className="text-base text-muted-foreground ml-2">°C</span>
             </p>
-            <p className="text-xs text-muted-foreground mt-2 font-medium">
+            {/* MODIFICATION: Changed mt-2 to mt-1 */}
+            <p className="text-xs text-muted-foreground mt-1 font-medium">
               Ideal: 1430-1470°C
             </p>
           </CardContent>
         </Card>
 
         <Card className="card-hover">
-          <CardHeader className="border-b border-border/50">
+          {/* MODIFICATION: Added p-4 to reduce header height */}
+          <CardHeader className="border-b border-border/50 p-4">
             <CardTitle className="flex items-center justify-between text-sm">
               <span>Avg. LSF</span>
               <TrendingUp className="w-4 h-4 text-chart-purple" />
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
-            <p className="text-3xl font-bold font-mono text-chart-purple">
+          {/* MODIFICATION: Changed p-6 to p-4 */}
+          <CardContent className="p-4">
+            {/* MODIFICATION: Changed text-3xl to text-2xl */}
+            <p className="text-2xl font-bold font-mono text-chart-purple">
               {stats.avgLSF.toFixed(1)}
-              <span className="text-lg text-muted-foreground ml-2">%</span>
+              {/* MODIFICATION: Changed text-lg to text-base */}
+              <span className="text-base text-muted-foreground ml-2">%</span>
             </p>
-            <p className="text-xs text-muted-foreground mt-2 font-medium">
+            {/* MODIFICATION: Changed mt-2 to mt-1 */}
+            <p className="text-xs text-muted-foreground mt-1 font-medium">
               Ideal: 94-98%
             </p>
           </CardContent>
         </Card>
 
         <Card className="card-hover">
-          <CardHeader className="border-b border-border/50">
+          {/* MODIFICATION: Added p-4 to reduce header height */}
+          <CardHeader className="border-b border-border/50 p-4">
             <CardTitle className="flex items-center justify-between text-sm">
               <span>Avg. Feed Rate</span>
               <TrendingUp className="w-4 h-4 text-chart-blue" />
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
-            <p className="text-3xl font-bold font-mono text-chart-blue">
+          {/* MODIFICATION: Changed p-6 to p-4 */}
+          <CardContent className="p-4">
+            {/* MODIFICATION: Changed text-3xl to text-2xl */}
+            <p className="text-2xl font-bold font-mono text-chart-blue">
               {stats.avgFeedRate.toFixed(1)}
-              <span className="text-lg text-muted-foreground ml-2">TPH</span>
+              {/* MODIFICATION: Changed text-lg to text-base */}
+              <span className="text-base text-muted-foreground ml-2">TPH</span>
             </p>
-            <p className="text-xs text-muted-foreground mt-2 font-medium">
+            {/* MODIFICATION: Changed mt-2 to mt-1 */}
+            <p className="text-xs text-muted-foreground mt-1 font-medium">
               Target: 220 TPH
             </p>
           </CardContent>

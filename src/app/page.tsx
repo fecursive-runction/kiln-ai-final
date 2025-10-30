@@ -32,7 +32,7 @@ export default function DashboardPage() {
     <div className="w-full">
       {/* Mobile Layout */}
       <div className="lg:hidden p-4 space-y-4 pb-20">
-        <PlantStatus liveMetrics={liveMetrics} loading={loading} />
+  <PlantStatus />
         <LiveMetricsPanel liveMetrics={liveMetrics} />
         <AlertsFeed alerts={alerts} liveMetrics={liveMetrics} />
         
@@ -61,7 +61,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-12 gap-6 h-[calc(100vh-180px)]">
           {/* LEFT COLUMN - Plant Status */}
           <div className="col-span-3 overflow-hidden h-full">
-            <PlantStatus liveMetrics={liveMetrics} loading={loading} />
+            <PlantStatus />
           </div>
 
           {/* MIDDLE COLUMN - Live Metrics */}

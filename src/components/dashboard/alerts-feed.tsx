@@ -49,10 +49,10 @@ export function AlertsFeed({ alerts, liveMetrics }: AlertsFeedProps) {
 
   return (
     <Card className="flex flex-col max-h-[600px]">
-      <CardHeader className="border-b border-border flex-shrink-0">
-        <CardTitle className="flex items-center justify-between">
+      <CardHeader className="border-b border-border">
+        <CardTitle className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
-            <Bell className="w-5 h-5 text-primary" />
+            <Bell className="w-4 h-4 text-primary" />
             Alerts Feed
           </div>
           <Badge variant="secondary" className="text-xs">
@@ -62,10 +62,10 @@ export function AlertsFeed({ alerts, liveMetrics }: AlertsFeedProps) {
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto p-4">
         {alerts.length === 0 ? (
-          <div 
+          <div
             className="text-center py-12"
           >
-            <div 
+            <div
               className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success/20 mb-4 border border-success/30"
             >
               <span className="text-3xl">✓</span>
@@ -93,11 +93,10 @@ export function AlertsFeed({ alerts, liveMetrics }: AlertsFeedProps) {
                   onClick={() => handleAlertClick(alert)}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 ${
-                      alert.severity === 'CRITICAL' 
-                        ? 'text-destructive' 
+                    <div className={`mt-0.5 ${alert.severity === 'CRITICAL'
+                        ? 'text-destructive'
                         : 'text-warning'
-                    }`}>
+                      }`}>
                       {getAlertIcon(alert.severity)}
                     </div>
 

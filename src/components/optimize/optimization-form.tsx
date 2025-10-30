@@ -86,6 +86,7 @@ export function OptimizationForm({ initialMetrics }: OptimizationFormProps) {
   }, [initialMetrics?.trigger]);
 
   return (
+    // src/components/optimize/optimization-form.tsx
     <div className="space-y-4">
       <Card>
         <CardHeader className="border-b border-border">
@@ -93,7 +94,7 @@ export function OptimizationForm({ initialMetrics }: OptimizationFormProps) {
         </CardHeader>
         <CardContent className="p-6">
           <form ref={formRef} action={formAction} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="kilnTemp" className="text-xs font-mono uppercase">
                   Kiln Temperature (°C)
@@ -162,18 +163,6 @@ export function OptimizationForm({ initialMetrics }: OptimizationFormProps) {
               />
             </div>
 
-            <div className="bg-secondary/50 rounded-lg p-4 border border-border">
-              <p className="font-bold text-xs mb-2 font-mono uppercase tracking-wider">
-                💡 Example Constraints:
-              </p>
-              <ul className="space-y-1 text-xs text-muted-foreground">
-                <li>• "LSF must be between 94% and 98%"</li>
-                <li>• "Keep kiln temperature below 1470°C"</li>
-                <li>• "Maximize C₃S content for early strength"</li>
-                <li>• "Reduce Fe₂O₃ content to improve whiteness"</li>
-              </ul>
-            </div>
-
             <SubmitButton />
           </form>
         </CardContent>
@@ -199,7 +188,7 @@ export function OptimizationForm({ initialMetrics }: OptimizationFormProps) {
       {!pending && state.recommendation && (
         <div>
           <RecommendationCard recommendation={state.recommendation} />
-          
+
           <Card className="mt-4 bg-secondary/30">
             <CardContent className="p-4">
               <Button variant="outline" className="w-full" size="sm">

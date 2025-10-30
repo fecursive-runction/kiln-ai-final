@@ -159,17 +159,29 @@ export function MetricsDataTable({ data }: MetricsDataTableProps) {
     <div className="space-y-4">
       <Card className="p-4">
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-          <div className="flex-1 w-full md:max-w-sm">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by timestamp, plant ID, or values..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 font-mono text-xs"
-              />
+          
+          {/* MODIFICATION: Grouping div now has `md:flex-1` to take up space */}
+          <div className="flex flex-col md:flex-row md:items-center gap-4 w-full md:flex-1">
+            
+            {/* MODIFICATION: Removed `md:max-w-sm` to allow search bar to grow */}
+            <div className="flex-1 w-full">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by timestamp, plant ID, or values..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="text-xs text-muted-foreground font-mono">
+              Showing <span className="font-bold text-foreground">{processedData.length}</span> of{' '}
+              <span className="font-bold text-foreground">{data.length}</span> records
             </div>
           </div>
+
 
           <div className="flex gap-2">
             <Button
@@ -182,11 +194,6 @@ export function MetricsDataTable({ data }: MetricsDataTableProps) {
               Export CSV
             </Button>
           </div>
-        </div>
-
-        <div className="mt-3 text-xs text-muted-foreground font-mono">
-          Showing <span className="font-bold text-foreground">{processedData.length}</span> of{' '}
-          <span className="font-bold text-foreground">{data.length}</span> records
         </div>
       </Card>
 

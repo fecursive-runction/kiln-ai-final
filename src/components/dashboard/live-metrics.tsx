@@ -15,9 +15,12 @@ export function LiveMetricsPanel({ liveMetrics }: LiveMetricsProps) {
   const [activeTab, setActiveTab] = useState('tab1');
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="flex-shrink-0">
-        <CardTitle className="text-base md:text-lg">Live Metrics</CardTitle>
+    <Card className="card-hover h-full">
+      <CardHeader className="border-b border-border">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Flame className="w-4 h-4 text-primary" />
+          Live Metrics
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col min-h-0 p-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">

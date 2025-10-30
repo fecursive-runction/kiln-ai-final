@@ -3,19 +3,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { LiveMetrics } from '@/context/DataProvider';
+import { useData } from '@/context/DataProvider';
 import { Play, Square, AlertTriangle, Flame } from 'lucide-react';
 
-interface PlantStatusProps {
-  liveMetrics: LiveMetrics | null;
-  loading: boolean;
-}
+export function PlantStatus() {
+  const { liveMetrics, loading, startPlant, stopPlant, emergencyStop } = useData();
 
-export function PlantStatus({ liveMetrics, loading }: PlantStatusProps) {
   const getPlantStatus = () => {
     if (loading) return 'LOADING';
     if (!liveMetrics) return 'STOPPED';
-    
+
     if (liveMetrics.kilnTemperature < 1420 || liveMetrics.kilnTemperature > 1480) {
       return 'EMERGENCY';
     }
@@ -47,13 +44,13 @@ export function PlantStatus({ liveMetrics, loading }: PlantStatusProps) {
 
   return (
     <Card className="card-hover h-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base md:text-lg">
-          <Flame className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+      <CardHeader className="border-b border-border">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Flame className="w-4 h-4 text-primary" />
           Plant Status
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 md:space-y-6">
+      <CardContent className="p-4 space-y-4">
         <div className="text-center space-y-3">
           <Badge variant={getStatusVariant()} className="text-base md:text-lg px-4 py-2">
             {plantStatus}
@@ -61,28 +58,33 @@ export function PlantStatus({ liveMetrics, loading }: PlantStatusProps) {
         </div>
 
         <div className="border-t border-border pt-4 space-y-2">
-          <Button 
-            variant="success" 
+          <Button
+            variant="success"
             className="w-full text-sm md:text-base"
             size="default"
-            disabled={plantStatus === 'RUNNING'}
+            disabled={plantStatus === 'RUNNING' || loading}
+            onClick={() => startPlant()}
           >
             <Play className="w-4 h-4 mr-2" />
             Start Plant
           </Button>
-          <Button 
-            variant="warning" 
+
+          <Button
+            variant="warning"
             className="w-full text-sm md:text-base"
             size="default"
-            disabled={plantStatus === 'STOPPED'}
+            disabled={plantStatus === 'STOPPED' || loading}
+            onClick={() => stopPlant()}
           >
             <Square className="w-4 h-4 mr-2" />
             Stop Plant
           </Button>
-          <Button 
-            variant="destructive" 
+
+          <Button
+            variant="destructive"
             className="w-full text-sm md:text-base"
             size="default"
+            onClick={() => emergencyStop()}
           >
             <AlertTriangle className="w-4 h-4 mr-2" />
             Emergency Stop

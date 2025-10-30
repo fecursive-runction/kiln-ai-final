@@ -1,10 +1,11 @@
+// src/app/analytics/page.tsx
 "use client";
 import React, { useState } from 'react';
 import { useData } from '@/context/DataProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
+import {
   LineChart,
   Line,
   XAxis,
@@ -12,12 +13,11 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
 import { formatNumber } from '@/lib/formatters';
-import { 
-  Flame, 
-  Gauge, 
+import {
+  Flame,
+  Gauge,
   Beaker,
   TestTube,
   TrendingUp,
@@ -33,10 +33,9 @@ export default function AnalyticsPage() {
         <Skeleton className="h-8 w-64" />
         <div className="grid grid-cols-3 gap-4">
           {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-24" />
+            <Skeleton key={i} className="h-96" />
           ))}
         </div>
-        <Skeleton className="h-96" />
       </div>
     );
   }
@@ -80,6 +79,84 @@ export default function AnalyticsPage() {
     return null;
   };
 
+  const MetricCard = ({ metricKey, label, unit, color, icon: Icon }: any) => {
+    // liveMetrics in DataProvider uses some different naming for keys
+    // e.g. DataProvider.LiveMetrics defines `kilnTemperature` while
+    // chart data uses `kilnTemp`. Try multiple fallbacks so the value
+    // is shown correctly:
+    const getLiveMetricValue = () => {
+      if (!liveMetrics) return undefined;
+
+      // explicit aliases for mismatched names
+      const aliasMap: Record<string, string> = {
+        kilnTemp: 'kilnTemperature',
+      };
+
+      // try list: exact, alias, camel->snake
+      const snake = metricKey.replace(/([A-Z])/g, '_$1').toLowerCase();
+      const tryKeys = [metricKey, aliasMap[metricKey], snake];
+
+      for (const k of tryKeys) {
+        if (!k) continue;
+        const v = (liveMetrics as any)[k];
+        if (v !== undefined) return v;
+      }
+
+      return undefined;
+    };
+
+    const currentValue = getLiveMetricValue();
+
+    return (
+      <Card className="card-hover">
+        <CardHeader className="border-b border-border pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Icon className="w-4 h-4" style={{ color }} />
+              {label}
+            </CardTitle>
+            {currentValue !== undefined && (
+              // Make value the same font size as the CardTitle (text-sm)
+              <span className="text-sm font-bold font-mono" style={{ color }}>
+                {formatNumber(currentValue as number, { decimals: 2 })} {unit}
+              </span>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="p-4">
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis
+                dataKey="time"
+                stroke="hsl(var(--muted-foreground))"
+                style={{ fontSize: '10px', fontFamily: 'var(--font-space-mono)' }}
+                interval="preserveStartEnd"
+                tickCount={3}
+              />
+              <YAxis
+                stroke="hsl(var(--muted-foreground))"
+                style={{ fontSize: '10px', fontFamily: 'var(--font-space-mono)' }}
+                width={45}
+                domain={['auto', 'auto']}
+                tickCount={5}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Line
+                type="monotone"
+                dataKey={metricKey}
+                stroke={color}
+                strokeWidth={2}
+                name={label}
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -100,311 +177,106 @@ export default function AnalyticsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 max-w-2xl">
-          <TabsTrigger value="tab1">Primary</TabsTrigger>
-          <TabsTrigger value="tab2">Oxides</TabsTrigger>
-          <TabsTrigger value="tab3">Phases</TabsTrigger>
-        </TabsList>
+        <div className="flex justify-center">
+          <TabsList className="grid grid-cols-3 w-full max-w-md">
+            <TabsTrigger value="tab1">Primary</TabsTrigger>
+            <TabsTrigger value="tab2">Oxides</TabsTrigger>
+            <TabsTrigger value="tab3">Phases</TabsTrigger>
+          </TabsList>
+        </div>
 
-        {liveMetrics && (
-          <>
-            <TabsContent value="tab1" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <ThinMetricCard
-                  icon={<Flame className="w-5 h-5" />}
-                  label="Kiln Temperature"
-                  value={liveMetrics.kilnTemperature}
-                  unit="°C"
-                  color="text-primary"
-                />
-                <ThinMetricCard
-                  icon={<Gauge className="w-5 h-5" />}
-                  label="Feed Rate"
-                  value={liveMetrics.feedRate}
-                  unit="TPH"
-                  color="text-chart-blue"
-                />
-                <ThinMetricCard
-                  icon={<Beaker className="w-5 h-5" />}
-                  label="LSF"
-                  value={liveMetrics.lsf}
-                  unit="%"
-                  color="text-chart-purple"
-                />
-              </div>
+        <TabsContent value="tab1" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <MetricCard
+              metricKey="kilnTemp"
+              label="Kiln Temperature"
+              unit="°C"
+              color="hsl(var(--primary))"
+              icon={Flame}
+            />
+            <MetricCard
+              metricKey="feedRate"
+              label="Feed Rate"
+              unit="TPH"
+              color="hsl(var(--chart-blue))"
+              icon={Gauge}
+            />
+            <MetricCard
+              metricKey="lsf"
+              label="LSF"
+              unit="%"
+              color="hsl(var(--chart-purple))"
+              icon={Beaker}
+            />
+          </div>
+        </TabsContent>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Primary Metrics Trends</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis 
-                        dataKey="time" 
-                        stroke="hsl(var(--muted-foreground))"
-                        style={{ fontSize: '11px', fontFamily: 'var(--font-space-mono)' }}
-                      />
-                      <YAxis 
-                        stroke="hsl(var(--muted-foreground))"
-                        style={{ fontSize: '11px', fontFamily: 'var(--font-space-mono)' }}
-                      />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Legend 
-                        wrapperStyle={{ fontSize: '12px', fontFamily: 'var(--font-space-mono)' }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="kilnTemp" 
-                        stroke="hsl(var(--primary))" 
-                        strokeWidth={2}
-                        name="Kiln Temp (°C)"
-                        dot={false}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="feedRate" 
-                        stroke="hsl(var(--chart-blue))" 
-                        strokeWidth={2}
-                        name="Feed Rate (TPH)"
-                        dot={false}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="lsf" 
-                        stroke="hsl(var(--chart-purple))" 
-                        strokeWidth={2}
-                        name="LSF (%)"
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </TabsContent>
+        <TabsContent value="tab2" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard
+              metricKey="cao"
+              label="CaO"
+              unit="%"
+              color="hsl(var(--chart-blue))"
+              icon={TestTube}
+            />
+            <MetricCard
+              metricKey="sio2"
+              label="SiO₂"
+              unit="%"
+              color="hsl(var(--chart-purple))"
+              icon={TestTube}
+            />
+            <MetricCard
+              metricKey="al2o3"
+              label="Al₂O₃"
+              unit="%"
+              color="hsl(var(--chart-yellow))"
+              icon={TestTube}
+            />
+            <MetricCard
+              metricKey="fe2o3"
+              label="Fe₂O₃"
+              unit="%"
+              color="hsl(var(--chart-orange))"
+              icon={TestTube}
+            />
+          </div>
+        </TabsContent>
 
-            <TabsContent value="tab2" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <ThinMetricCard
-                  icon={<TestTube className="w-5 h-5" />}
-                  label="CaO"
-                  value={liveMetrics.cao}
-                  unit="%"
-                  color="text-chart-blue"
-                />
-                <ThinMetricCard
-                  icon={<TestTube className="w-5 h-5" />}
-                  label="SiO₂"
-                  value={liveMetrics.sio2}
-                  unit="%"
-                  color="text-chart-purple"
-                />
-                <ThinMetricCard
-                  icon={<TestTube className="w-5 h-5" />}
-                  label="Al₂O₃"
-                  value={liveMetrics.al2o3}
-                  unit="%"
-                  color="text-chart-yellow"
-                />
-                <ThinMetricCard
-                  icon={<TestTube className="w-5 h-5" />}
-                  label="Fe₂O₃"
-                  value={liveMetrics.fe2o3}
-                  unit="%"
-                  color="text-chart-orange"
-                />
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Oxide Composition Trends</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis 
-                        dataKey="time" 
-                        stroke="hsl(var(--muted-foreground))"
-                        style={{ fontSize: '11px', fontFamily: 'var(--font-space-mono)' }}
-                      />
-                      <YAxis 
-                        stroke="hsl(var(--muted-foreground))"
-                        style={{ fontSize: '11px', fontFamily: 'var(--font-space-mono)' }}
-                      />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Legend 
-                        wrapperStyle={{ fontSize: '12px', fontFamily: 'var(--font-space-mono)' }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="cao" 
-                        stroke="hsl(var(--chart-blue))" 
-                        strokeWidth={2}
-                        name="CaO (%)"
-                        dot={false}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="sio2" 
-                        stroke="hsl(var(--chart-purple))" 
-                        strokeWidth={2}
-                        name="SiO₂ (%)"
-                        dot={false}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="al2o3" 
-                        stroke="hsl(var(--chart-yellow))" 
-                        strokeWidth={2}
-                        name="Al₂O₃ (%)"
-                        dot={false}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="fe2o3" 
-                        stroke="hsl(var(--chart-orange))" 
-                        strokeWidth={2}
-                        name="Fe₂O₃ (%)"
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="tab3" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <ThinMetricCard
-                  icon={<Beaker className="w-5 h-5" />}
-                  label="C₃S (Alite)"
-                  value={liveMetrics.c3s}
-                  unit="%"
-                  color="text-primary"
-                />
-                <ThinMetricCard
-                  icon={<Beaker className="w-5 h-5" />}
-                  label="C₂S (Belite)"
-                  value={liveMetrics.c2s}
-                  unit="%"
-                  color="text-chart-blue"
-                />
-                <ThinMetricCard
-                  icon={<Beaker className="w-5 h-5" />}
-                  label="C₃A"
-                  value={liveMetrics.c3a}
-                  unit="%"
-                  color="text-chart-purple"
-                />
-                <ThinMetricCard
-                  icon={<Beaker className="w-5 h-5" />}
-                  label="C₄AF"
-                  value={liveMetrics.c4af}
-                  unit="%"
-                  color="text-chart-orange"
-                />
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Clinker Phase Trends</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis 
-                        dataKey="time" 
-                        stroke="hsl(var(--muted-foreground))"
-                        style={{ fontSize: '11px', fontFamily: 'var(--font-space-mono)' }}
-                      />
-                      <YAxis 
-                        stroke="hsl(var(--muted-foreground))"
-                        style={{ fontSize: '11px', fontFamily: 'var(--font-space-mono)' }}
-                      />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Legend 
-                        wrapperStyle={{ fontSize: '12px', fontFamily: 'var(--font-space-mono)' }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="c3s" 
-                        stroke="hsl(var(--primary))" 
-                        strokeWidth={2}
-                        name="C₃S (%)"
-                        dot={false}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="c2s" 
-                        stroke="hsl(var(--chart-blue))" 
-                        strokeWidth={2}
-                        name="C₂S (%)"
-                        dot={false}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="c3a" 
-                        stroke="hsl(var(--chart-purple))" 
-                        strokeWidth={2}
-                        name="C₃A (%)"
-                        dot={false}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="c4af" 
-                        stroke="hsl(var(--chart-orange))" 
-                        strokeWidth={2}
-                        name="C₄AF (%)"
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </>
-        )}
+        <TabsContent value="tab3" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard
+              metricKey="c3s"
+              label="C₃S (Alite)"
+              unit="%"
+              color="hsl(var(--primary))"
+              icon={Beaker}
+            />
+            <MetricCard
+              metricKey="c2s"
+              label="C₂S (Belite)"
+              unit="%"
+              color="hsl(var(--chart-blue))"
+              icon={Beaker}
+            />
+            <MetricCard
+              metricKey="c3a"
+              label="C₃A"
+              unit="%"
+              color="hsl(var(--chart-purple))"
+              icon={Beaker}
+            />
+            <MetricCard
+              metricKey="c4af"
+              label="C₄AF"
+              unit="%"
+              color="hsl(var(--chart-orange))"
+              icon={Beaker}
+            />
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
-  );
-}
-
-function ThinMetricCard({ 
-  icon, 
-  label, 
-  value, 
-  unit, 
-  color 
-}: { 
-  icon: React.ReactNode; 
-  label: string; 
-  value: number; 
-  unit: string;
-  color: string;
-}) {
-  return (
-    <Card className="card-hover">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div className={`${color} opacity-80`}>
-            {icon}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider truncate">
-              {label}
-            </p>
-            <div className="flex items-baseline gap-2 mt-0.5">
-              <span className={`text-xl font-bold font-mono ${color}`}>
-                {formatNumber(value, { decimals: 2 })}
-              </span>
-              <span className="text-xs text-muted-foreground font-mono">{unit}</span>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }

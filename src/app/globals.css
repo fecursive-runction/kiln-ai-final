@@ -99,27 +99,23 @@ html {
 /* Neon Glow Effect Utility */
 @keyframes neon-pulse {
   0%, 100% {
-    box-shadow: 0 0 10px hsl(var(--primary) / 0.5),
-                0 0 20px hsl(var(--primary) / 0.3),
-                0 0 30px hsl(var(--primary) / 0.2);
+    box-shadow: 0 0 5px hsl(var(--primary) / 0.2),
+                0 0 10px hsl(var(--primary) / 0.1);
   }
   50% {
-    box-shadow: 0 0 15px hsl(var(--primary) / 0.7),
-                0 0 30px hsl(var(--primary) / 0.5),
-                0 0 45px hsl(var(--primary) / 0.3);
+    box-shadow: 0 0 8px hsl(var(--primary) / 0.3),
+                0 0 15px hsl(var(--primary) / 0.15);
   }
 }
 
 .neon-glow {
-  box-shadow: 0 0 10px hsl(var(--primary) / 0.5),
-              0 0 20px hsl(var(--primary) / 0.3),
-              0 0 30px hsl(var(--primary) / 0.2);
+  box-shadow: 0 0 5px hsl(var(--primary) / 0.2),
+              0 0 10px hsl(var(--primary) / 0.1);
 }
 
 .neon-glow-strong {
-  box-shadow: 0 0 15px hsl(var(--primary) / 0.8),
-              0 0 30px hsl(var(--primary) / 0.6),
-              0 0 45px hsl(var(--primary) / 0.4);
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.3),
+              0 0 15px hsl(var(--primary) / 0.15);
 }
 
 .neon-glow-pulse {

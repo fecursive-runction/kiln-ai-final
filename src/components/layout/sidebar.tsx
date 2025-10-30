@@ -71,7 +71,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const getPlantStatus = () => {
     if (loading) return 'LOADING';
     if (!liveMetrics) return 'STOPPED';
-    
+
     if (liveMetrics.kilnTemperature < 1420 || liveMetrics.kilnTemperature > 1480) {
       return 'EMERGENCY';
     }
@@ -120,21 +120,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       )}
 
       <aside
-        className={`fixed top-0 left-0 z-50 h-full w-[240px] bg-card border-r border-border flex flex-col glass-strong transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed top-0 left-0 z-50 h-full w-[240px] bg-card border-r border-border flex flex-col glass-strong transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
-        <div className="flex items-center gap-3 p-6 border-b border-border">
-          <div className="bg-primary/10 p-2 rounded-lg border border-primary/30 neon-glow">
-            <Factory className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h2 className="font-bold text-lg font-mono text-foreground tracking-wider">kiln.AI</h2>
-            <p className="text-xs text-muted-foreground font-medium">Control System</p>
-          </div>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto pt-20">
           {navigation.map((item) => {
             const active = isActive(item.href);
             return (
@@ -143,10 +132,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   className={`
                     relative flex items-center gap-3 px-4 py-3 rounded-lg
                     transition-all duration-200 font-mono text-sm uppercase tracking-wider
-                    ${
-                      active
-                        ? 'bg-primary/20 text-primary border border-primary/50 shadow-neon-sm'
-                        : 'text-muted-foreground hover:bg-secondary hover:text-foreground border border-transparent'
+                    ${active
+                      ? 'bg-primary/20 text-primary border border-primary/50 shadow-neon-sm'
+                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground border border-transparent'
                     }
                   `}
                 >

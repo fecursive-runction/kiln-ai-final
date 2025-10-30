@@ -8,6 +8,7 @@ import {
   ReactNode,
 } from 'react';
 import { getLiveMetrics, getAiAlerts, getMetricsHistory } from '@/app/actions';
+import { toast } from '@/hooks/use-toast';
 import { formatChartTime } from '@/lib/formatters';
 
 // Type definitions based on API contract
@@ -61,6 +62,9 @@ interface DataContextValue {
   chartData: ChartDataPoint[];
   loading: boolean;
   refreshData: () => Promise<void>;
+  startPlant: () => Promise<void>;
+  stopPlant: () => void;
+  emergencyStop: () => void;
 }
 
 const DataContext = createContext<DataContextValue>({
@@ -70,6 +74,9 @@ const DataContext = createContext<DataContextValue>({
   chartData: [],
   loading: true,
   refreshData: async () => {},
+  startPlant: async () => {},
+  stopPlant: () => {},
+  emergencyStop: () => {},
 });
 
 /**
@@ -100,6 +107,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [metricsHistory, setMetricsHistory] = useState<ProductionMetric[]>([]);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [plantRunning, setPlantRunning] = useState(true);
+  const ingestRef = { current: 0 as any } as { current: any };
 
   // Data fetching function (used by both initial load and refresh)
   const fetchData = async () => {
@@ -132,18 +141,32 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   // Interval 1: Data Ingestion Trigger
-  // Calls /api/ingest to generate new simulated data
+  // Calls /api/ingest to generate new simulated data when plantRunning
   useEffect(() => {
-    const ingestInterval = setInterval(async () => {
-      try {
-        await fetch('/api/ingest', { method: 'POST' });
-      } catch (error) {
-        console.error('Ingestion failed:', error);
-      }
-    }, 5000); // 5 seconds
+    const startIngest = () => {
+      // avoid multiple intervals
+      if (ingestRef.current) return;
+      ingestRef.current = setInterval(async () => {
+        try {
+          await fetch('/api/ingest', { method: 'POST' });
+        } catch (error) {
+          console.error('Ingestion failed:', error);
+        }
+      }, 5000); // 5 seconds
+    };
 
-    return () => clearInterval(ingestInterval);
-  }, []);
+    const stopIngest = () => {
+      if (ingestRef.current) {
+        clearInterval(ingestRef.current);
+        ingestRef.current = 0;
+      }
+    };
+
+    if (plantRunning) startIngest();
+    else stopIngest();
+
+    return () => stopIngest();
+  }, [plantRunning]);
 
   // Interval 2: Data Polling
   // Fetches fresh data from server actions
@@ -179,6 +202,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
         chartData,
         loading,
         refreshData: fetchData,
+        startPlant: async () => {
+          // start ingestion and fetch an immediate data point
+          setPlantRunning(true);
+          try {
+            await fetchData();
+            toast({ title: 'Plant started', description: 'Data ingestion resumed.' });
+          } catch (e) {
+            console.error('startPlant failed to fetch data', e);
+            toast({ title: 'Start failed', description: 'Could not fetch data after starting.', variant: 'destructive' });
+          }
+        },
+        stopPlant: () => {
+          setPlantRunning(false);
+          toast({ title: 'Plant stopped', description: 'Data ingestion paused.' });
+        },
+        emergencyStop: () => {
+          // stop ingestion but keep the last known live metrics visible
+          setPlantRunning(false);
+          toast({ title: 'EMERGENCY STOP', description: 'All systems halted. Check plant immediately.', variant: 'destructive' });
+          // Optionally, add an alert here in the future
+        },
       }}
     >
       {children}
