@@ -1,7 +1,10 @@
 import type {NextConfig} from 'next';
 import { config } from 'dotenv';
 
-config(); // Load environment variables from .env file
+// Only run dotenv in non-production environments
+if (process.env.NODE_ENV !== 'production') {
+  config(); // Load environment variables from .env file
+}
 
 const nextConfig: NextConfig = {
   /* config options here */
