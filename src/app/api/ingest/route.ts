@@ -1,7 +1,7 @@
 'use server';
 
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { insertMetric } from '@/lib/data/metrics';
 
 // Function to generate a random number within a range
 const getRandom = (min: number, max: number, decimals: number = 2) =>
@@ -76,9 +76,8 @@ export async function POST() {
       c4af: parseFloat(boguePhases.c4af.toFixed(2)),
     };
 
-    // Insert the new metric into Supabase
-    const { error } = await supabase.from('production_metrics').insert([newMetric]);
-    if (error) throw error;
+    // Insert the new metric using the server-side metrics helper (uses service role key)
+    await insertMetric(newMetric as any);
 
     console.log('Ingested new live metric into Supabase:', newMetric);
 

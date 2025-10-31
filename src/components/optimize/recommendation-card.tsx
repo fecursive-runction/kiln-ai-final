@@ -16,6 +16,7 @@ import {
   ThermometerSun,
   FileText,
   AlertTriangle,
+  Sparkles,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -30,7 +31,10 @@ interface OptimizationRecommendation {
 }
 
 interface RecommendationCardProps {
-  recommendation: OptimizationRecommendation;
+  recommendation: OptimizationRecommendation | null;
+  isGenerating?: boolean;
+  progress?: number;
+  error?: string | null;
 }
 
 const initialApplyState = { success: false, message: '' };
@@ -55,9 +59,13 @@ function ApplyButton() {
   );
 }
 
-export function RecommendationCard({
-  recommendation,
-}: RecommendationCardProps) {
+export function RecommendationCard(props: RecommendationCardProps) {
+  const {
+    recommendation,
+    isGenerating = false,
+    progress = 0,
+    error = null,
+  } = props;
   const [state, formAction] = useActionState(
     applyOptimization,
     initialApplyState
@@ -95,6 +103,80 @@ export function RecommendationCard({
     return 'bg-secondary border-border text-foreground';
   };
 
+  // Show progress bar and status if generating
+  if (isGenerating) {
+    return (
+      <Card className="border-primary/50">
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-mono font-bold text-foreground">
+                AI Optimization in Progress
+              </span>
+              <span className="text-sm font-mono text-primary font-bold">
+                {Math.round(progress)}%
+              </span>
+            </div>
+            <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-500 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <div className="space-y-2 text-xs text-muted-foreground">
+              <p className="flex items-center gap-2">
+                <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                Analyzing current plant composition
+              </p>
+              <p className="flex items-center gap-2">
+                <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                Calculating optimal raw mix adjustments
+              </p>
+              <p className="flex items-center gap-2">
+                <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                Generating AI recommendations
+              </p>
+            </div>
+            <div className="pt-3 border-t border-border">
+              <p className="text-xs text-muted-foreground italic">
+                💡 You can navigate to other pages while this generates
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error && !isGenerating) {
+    return (
+      <Card className="border-destructive/50 bg-destructive/5">
+        <CardContent className="p-4">
+          <p className="text-sm text-destructive">{error}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!recommendation) {
+    return (
+      <div className="text-center space-y-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 border border-primary/30">
+          <Sparkles className="w-8 h-8 text-primary" />
+        </div>
+        <div>
+          <p className="text-sm font-bold font-mono uppercase tracking-wider text-foreground mb-1">
+            AI Optimization
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Results will appear here after generation
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ...existing code for showing recommendation...
   return (
     <motion.div
       initial={{ y: 20, opacity: 0 }}

@@ -1,7 +1,7 @@
+// src/components/optimize/optimization-form.tsx
 'use client';
 
-import { useActionState, useEffect, useRef, useState } from 'react';
-import { useFormStatus } from 'react-dom';
+import { useState, useRef, useEffect } from 'react';
 import { runOptimization } from '@/app/actions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,9 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Bot, Sparkles, FileText, Download } from 'lucide-react';
+import { Bot, Sparkles, Loader2 } from 'lucide-react';
 import { RecommendationCard } from './recommendation-card';
-import { formatNumber } from '@/lib/formatters';
 
 interface OptimizationFormProps {
   initialMetrics?: {
@@ -25,35 +24,19 @@ interface OptimizationFormProps {
     fe2o3?: number;
     trigger?: boolean;
   };
+  onRecommendation?: (rec: any) => void;
+  onError?: (err: string | null) => void;
+  isGenerating: boolean;
+  setIsGenerating: (val: boolean) => void;
+  setProgress: (val: number) => void;
 }
 
-const initialState = { error: null, recommendation: null };
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-
-  return (
-    <Button type="submit" disabled={pending} className="w-full" size="lg">
-      {pending ? (
-        <>
-          <Bot className="w-4 h-4 animate-spin" />
-          Generating...
-        </>
-      ) : (
-        <>
-          <Sparkles className="w-4 h-4" />
-          Generate Optimization
-        </>
-      )}
-    </Button>
-  );
-}
-
-export function OptimizationForm({ initialMetrics }: OptimizationFormProps) {
-  const [state, formAction] = useActionState(runOptimization, initialState);
+export function OptimizationForm({ initialMetrics, onRecommendation, onError, isGenerating, setIsGenerating, setProgress }: OptimizationFormProps) {
+  // recommendation and error are now managed by parent
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
-  const { pending } = useFormStatus();
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const [targetValues, setTargetValues] = useState({
     kilnTemp: '',
     feedRate: '',
@@ -64,36 +47,88 @@ export function OptimizationForm({ initialMetrics }: OptimizationFormProps) {
     fe2o3: '',
   });
 
-  useEffect(() => {
-    if (state.error) {
-      toast({
-        variant: 'destructive',
-        title: 'Optimization Error',
-        description: state.error,
-      });
-    }
-  }, [state.error, toast]);
+  // Progress simulation is now managed by parent
 
+  // Auto-trigger if needed
   useEffect(() => {
-    if (initialMetrics?.trigger && formRef.current) {
+    if (initialMetrics?.trigger && formRef.current && !isGenerating && !onRecommendation) {
       setTimeout(() => {
-        const submitButton = formRef.current?.querySelector(
-          'button[type="submit"]'
-        ) as HTMLButtonElement;
-        submitButton?.click();
+        handleSubmit(new Event('submit') as any);
       }, 100);
     }
   }, [initialMetrics?.trigger]);
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    // Allow navigation while generating
+  setIsGenerating(true);
+  if (onError) onError(null);
+  if (onRecommendation) onRecommendation(null);
+
+    // Create abort controller for cancellation
+    abortControllerRef.current = new AbortController();
+
+    const formData = new FormData(e.currentTarget);
+
+    try {
+      toast({
+        title: 'Generating optimization...',
+        description: 'This may take 10-15 seconds. Feel free to navigate away.',
+      });
+
+      // Non-blocking async call
+      const result = await runOptimization({ error: null, recommendation: null }, formData);
+
+      if (result.error) {
+        if (onError) onError(result.error);
+        toast({
+          variant: 'destructive',
+          title: 'Optimization Error',
+          description: result.error,
+        });
+      } else if (result.recommendation) {
+        if (onRecommendation) onRecommendation(result.recommendation);
+        setProgress(100);
+        toast({
+          title: 'Optimization Complete',
+          description: 'Recommendation generated successfully.',
+        });
+      }
+    } catch (err: any) {
+      console.error('Optimization error:', err);
+  if (onError) onError(err.message || 'An unexpected error occurred.');
+      toast({
+        variant: 'destructive',
+        title: 'Optimization Failed',
+        description: err.message || 'Please try again.',
+      });
+    } finally {
+  setIsGenerating(false);
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+  setIsGenerating(false);
+  setProgress(0);
+      toast({
+        title: 'Optimization Cancelled',
+        description: 'Generation stopped.',
+      });
+    }
+  };
+
   return (
-    // src/components/optimize/optimization-form.tsx
     <div className="space-y-4">
       <Card>
         <CardHeader className="border-b border-border">
           <CardTitle className="text-sm">Target Parameters</CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <form ref={formRef} action={formAction} className="space-y-6">
+          <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="kilnTemp" className="text-xs font-mono uppercase">
@@ -106,7 +141,7 @@ export function OptimizationForm({ initialMetrics }: OptimizationFormProps) {
                   placeholder="1450"
                   value={targetValues.kilnTemp}
                   onChange={(e) => setTargetValues({ ...targetValues, kilnTemp: e.target.value })}
-                  disabled={pending}
+                  disabled={isGenerating}
                   className="font-mono"
                 />
               </div>
@@ -122,7 +157,7 @@ export function OptimizationForm({ initialMetrics }: OptimizationFormProps) {
                   placeholder="220"
                   value={targetValues.feedRate}
                   onChange={(e) => setTargetValues({ ...targetValues, feedRate: e.target.value })}
-                  disabled={pending}
+                  disabled={isGenerating}
                   className="font-mono"
                 />
               </div>
@@ -138,7 +173,7 @@ export function OptimizationForm({ initialMetrics }: OptimizationFormProps) {
                   placeholder="96"
                   value={targetValues.lsf}
                   onChange={(e) => setTargetValues({ ...targetValues, lsf: e.target.value })}
-                  disabled={pending}
+                  disabled={isGenerating}
                   className="font-mono"
                 />
               </div>
@@ -153,7 +188,7 @@ export function OptimizationForm({ initialMetrics }: OptimizationFormProps) {
                 name="constraints"
                 placeholder="e.g., Keep kiln temp below 1480°C, LSF target is 96%, Minimize C₃A content"
                 rows={3}
-                disabled={pending}
+                disabled={isGenerating}
                 className="resize-none font-mono text-xs"
                 defaultValue={
                   initialMetrics?.trigger
@@ -163,42 +198,44 @@ export function OptimizationForm({ initialMetrics }: OptimizationFormProps) {
               />
             </div>
 
-            <SubmitButton />
+            <div className="flex flex-row gap-3 items-center">
+              <div className="flex-1">
+                <Button
+                  type="submit"
+                  disabled={isGenerating}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      <span className="font-mono">Generating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      <span className="font-mono">Generate Optimization</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+              {isGenerating && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancel}
+                  size="lg"
+                  className="font-mono"
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
           </form>
         </CardContent>
       </Card>
 
-      {pending && (
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-              <div className="grid grid-cols-2 gap-4 mt-6">
-                <Skeleton className="h-20" />
-                <Skeleton className="h-20" />
-              </div>
-              <Skeleton className="h-32 mt-4" />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {!pending && state.recommendation && (
-        <div>
-          <RecommendationCard recommendation={state.recommendation} />
-
-          <Card className="mt-4 bg-secondary/30">
-            <CardContent className="p-4">
-              <Button variant="outline" className="w-full" size="sm">
-                <Download className="w-4 h-4" />
-                Export as PDF
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* Progress, error, and recommendation are now rendered in parent */}
     </div>
   );
 }

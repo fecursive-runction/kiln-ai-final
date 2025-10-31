@@ -3,20 +3,20 @@
 import { optimizeCementProduction, type OptimizeCementProductionInput } from '@/ai/flows/optimize-cement-production';
 import { generateAlerts } from '@/ai/flows/generate-alerts';
 import { z } from 'zod';
-import { supabase } from '@/lib/supabaseClient';
+import {
+  getLatestMetric,
+  getMetricsHistory as getMetricsHistoryFromDB,
+  insertMetric,
+  getRecentAlerts as getRecentAlertsFromDB,
+  getHistoricalData as getHistoricalDataFromDB,
+  insertAlert,
+} from '@/lib/data/metrics';
 import { plantAgentFlow } from '@/ai/flows/plant-agent'; // ✅ updated import
 import { Action } from 'genkit';
 
 export async function getLiveMetrics() {
   try {
-    const { data: latestMetric, error } = await supabase
-      .from('production_metrics')
-      .select('*')
-      .order('timestamp', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) throw error;
+    const latestMetric = await getLatestMetric();
 
     if (!latestMetric) {
       return {
@@ -33,7 +33,6 @@ export async function getLiveMetrics() {
         c4af: 8,
       };
     }
-
     return {
       kilnTemperature: latestMetric.kiln_temp,
       feedRate: latestMetric.feed_rate,
@@ -67,13 +66,7 @@ export async function getLiveMetrics() {
 
 export async function getMetricsHistory() {
   try {
-    const { data: history, error } = await supabase
-      .from('production_metrics')
-      .select('*')
-      .order('timestamp', { ascending: false })
-      .limit(50);
-
-    if (error) throw error;
+    const history = await getMetricsHistoryFromDB(50);
     return history ?? [];
   } catch (e: any) {
     console.error('Failed to get metrics history:', e);
@@ -214,10 +207,9 @@ export async function applyOptimization(prevState: any, formData: FormData) {
       c4af: parseFloat(newC4AF.toFixed(2)),
     };
 
-    const { error } = await supabase.from('production_metrics').insert([payload]);
-    if (error) throw error;
+  await insertMetric(payload as any);
 
-    return { success: true, message: 'Optimization applied successfully!' };
+  return { success: true, message: 'Optimization applied successfully!' };
   } catch (error: any) {
     console.error('Failed to apply optimization:', error);
     return { success: false, message: 'Failed to apply optimization.' };

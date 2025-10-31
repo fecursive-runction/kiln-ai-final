@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useData } from '@/context/DataProvider';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Menu, X, Factory } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -26,7 +26,7 @@ export function Header({ onMenuClick, isSidebarOpen }: HeaderProps) {
   const getPlantStatus = () => {
     if (loading) return 'LOADING';
     if (!liveMetrics) return 'STOPPED';
-    
+
     if (liveMetrics.kilnTemperature < 1420 || liveMetrics.kilnTemperature > 1480) {
       return 'EMERGENCY';
     }
@@ -81,16 +81,25 @@ export function Header({ onMenuClick, isSidebarOpen }: HeaderProps) {
             )}
           </Button>
 
-          <div className="flex items-center gap-3">
-            <div className="bg-primary/10 p-2 rounded-lg border border-primary/30 neon-glow">
-              <Factory className="w-5 h-5 text-primary" />
+          <a href="/" className="flex items-center gap-3">
+            <div className="bg-primary/10 p-0 rounded-lg border border-primary/30 neon-glow w-10 h-10 flex items-center justify-center">
+
+              {/* - Added brightness-150 to make the whole icon brighter.
+      - Added a white drop-shadow to create a subtle glow effect.
+    */}
+              <img
+                src="/icon.png"
+                alt="kiln.AI logo"
+                className="w-8 h-8 object-contain brightness-150 drop-shadow-[0_0_2px_rgba(255,255,255,0.6)]"
+              />
+
             </div>
             <div>
               <h1 className="text-lg font-bold font-mono text-foreground tracking-wider">
                 kiln.AI
               </h1>
             </div>
-          </div>
+          </a>
         </div>
 
         <div className="absolute left-1/2 transform -translate-x-1/2 hidden md:block">

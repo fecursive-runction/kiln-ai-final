@@ -37,6 +37,10 @@ kiln.db
 # Dumps
 /dumps
 
+# Local build artifacts
+tsconfig.tsbuildinfo
+.modified
+
 # Debugging logs
 npm-debug.log*
 yarn-debug.log*

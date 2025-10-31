@@ -260,8 +260,13 @@ export function MetricsDataTable({ data }: MetricsDataTableProps) {
                   const tempStatus = getTemperatureStatus(metric.kiln_temp);
                   const lsfBadge = getLSFBadgeVariant(metric.lsf);
 
+                  // Ensure a stable, unique key for each row. Prefer an explicit id
+                  // if present; otherwise fall back to timestamp+plant_id which
+                  // should be unique enough for this dataset.
+                  const rowKey = (metric as any).id ?? `${metric.timestamp}-${metric.plant_id}`;
+
                   return (
-                    <TableRow key={metric.id} className="hover:bg-secondary/50 transition-colors border-b border-border/50">
+                    <TableRow key={rowKey} className="hover:bg-secondary/50 transition-colors border-b border-border/50">
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {formatTimestamp(metric.timestamp)}
                       </TableCell>

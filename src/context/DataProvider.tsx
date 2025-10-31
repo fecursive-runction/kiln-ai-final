@@ -6,6 +6,8 @@ import {
   useState,
   useEffect,
   ReactNode,
+  Dispatch,
+  SetStateAction,
 } from 'react';
 import { getLiveMetrics, getAiAlerts, getMetricsHistory } from '@/app/actions';
 import { toast } from '@/hooks/use-toast';
@@ -65,6 +67,10 @@ interface DataContextValue {
   startPlant: () => Promise<void>;
   stopPlant: () => void;
   emergencyStop: () => void;
+  optimizationContext: {
+    pendingOptimization: { promise: Promise<any>; startTime: number } | null;
+    setPendingOptimization: Dispatch<SetStateAction<{ promise: Promise<any>; startTime: number } | null>>;
+  };
 }
 
 const DataContext = createContext<DataContextValue>({
@@ -77,6 +83,11 @@ const DataContext = createContext<DataContextValue>({
   startPlant: async () => {},
   stopPlant: () => {},
   emergencyStop: () => {},
+  optimizationContext: {
+    pendingOptimization: null,
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    setPendingOptimization: () => {},
+  },
 });
 
 /**
@@ -109,6 +120,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [plantRunning, setPlantRunning] = useState(true);
   const ingestRef = { current: 0 as any } as { current: any };
+
+  const [pendingOptimization, setPendingOptimization] = useState<{
+    promise: Promise<any>;
+    startTime: number;
+  } | null>(null);
 
   // Data fetching function (used by both initial load and refresh)
   const fetchData = async () => {
@@ -223,6 +239,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
           toast({ title: 'EMERGENCY STOP', description: 'All systems halted. Check plant immediately.', variant: 'destructive' });
           // Optionally, add an alert here in the future
         },
+        optimizationContext: {
+          pendingOptimization,
+          setPendingOptimization,
+        },
       }}
     >
       {children}
@@ -230,10 +250,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * Custom hook to access data context
- * Usage: const { liveMetrics, alerts, loading } = useData();
- */
 export function useData() {
   const context = useContext(DataContext);
   if (!context) {
@@ -241,39 +257,3 @@ export function useData() {
   }
   return context;
 }
-
-/**
- * Usage Example:
- * 
- * // In app/layout.tsx
- * import { DataProvider } from '@/context/DataProvider';
- * 
- * export default function RootLayout({ children }) {
- *   return (
- *     <html>
- *       <body>
- *         <DataProvider>
- *           {children}
- *         </DataProvider>
- *       </body>
- *     </html>
- *   );
- * }
- * 
- * // In any component
- * 'use client';
- * import { useData } from '@/context/DataProvider';
- * 
- * function Dashboard() {
- *   const { liveMetrics, alerts, loading } = useData();
- *   
- *   if (loading) return <LoadingSkeleton />;
- *   
- *   return (
- *     <div>
- *       <div>Temperature: {liveMetrics.kilnTemperature}°C</div>
- *       <div>{alerts.length} alerts</div>
- *     </div>
- *   );
- * }
- */

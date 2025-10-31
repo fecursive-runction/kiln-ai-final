@@ -1,9 +1,10 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useData } from '@/context/DataProvider';
 import { OptimizationForm } from '@/components/optimize/optimization-form';
+import { RecommendationCard } from '@/components/optimize/recommendation-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sparkles, Activity } from 'lucide-react';
@@ -34,6 +35,27 @@ function OptimizationPageContent() {
       : undefined,
     trigger: searchParams.get('trigger') === 'true',
   };
+
+  // State for optimization result and error
+  const [recommendation, setRecommendation] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  // Progress simulation
+  useEffect(() => {
+    if (isGenerating) {
+      const interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 90) return prev;
+          return prev + Math.random() * 10;
+        });
+      }, 500);
+      return () => clearInterval(interval);
+    } else {
+      setProgress(0);
+    }
+  }, [isGenerating]);
 
   if (loading) {
     return (
@@ -173,25 +195,26 @@ function OptimizationPageContent() {
                 ? initialMetrics
                 : undefined
             }
+            onRecommendation={setRecommendation}
+            onError={setError}
+            isGenerating={isGenerating}
+            setIsGenerating={setIsGenerating}
+            setProgress={setProgress}
           />
+          {/* Progress and error now handled in RecommendationCard/result area */}
         </div>
 
-        {/* RIGHT COLUMN - Placeholder for AI Results */}
+        {/* RIGHT COLUMN - AI Results */}
         <div>
           <Card className="h-full bg-secondary/20 border-dashed">
             <CardContent className="p-8 flex items-center justify-center h-full">
-              <div className="text-center space-y-4">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 border border-primary/30">
-                  <Sparkles className="w-8 h-8 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold font-mono uppercase tracking-wider text-foreground mb-1">
-                    AI Optimization
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Results will appear here after generation
-                  </p>
-                </div>
+              <div className="w-full">
+                <RecommendationCard
+                  recommendation={recommendation}
+                  isGenerating={isGenerating}
+                  progress={progress}
+                  error={error}
+                />
               </div>
             </CardContent>
           </Card>
