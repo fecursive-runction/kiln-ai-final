@@ -187,81 +187,87 @@ function OptimizationPageContent() {
           </Card>
         </div>
 
-        {/* MIDDLE COLUMN - Optimization Form */}
+        {/* MIDDLE COLUMN - Optimization Form + Recommendation (below) */}
         <div>
           <OptimizationForm
             initialMetrics={
               Object.values(initialMetrics).some((v) => v !== undefined)
                 ? initialMetrics
                 : undefined
-            }
+            } as any // Cast to any to bypass type checking for now
+            liveMetrics={liveMetrics}
             onRecommendation={setRecommendation}
             onError={setError}
             isGenerating={isGenerating}
             setIsGenerating={setIsGenerating}
             setProgress={setProgress}
           />
-          {/* Progress and error now handled in RecommendationCard/result area */}
+
+          {/* Recommendation card removed from the middle column so it can be rendered full-width below */}
         </div>
 
-        {/* RIGHT COLUMN - AI Results */}
+        {/* RIGHT COLUMN - How It Works (moved beside the optimization form) */}
         <div>
-          <Card className="h-full bg-secondary/20 border-dashed">
-            <CardContent className="p-8 flex items-center justify-center h-full">
-              <div className="w-full">
-                <RecommendationCard
-                  recommendation={recommendation}
-                  isGenerating={isGenerating}
-                  progress={progress}
-                  error={error}
-                />
+          <Card className="h-full bg-secondary/30">
+            <CardHeader>
+              <CardTitle className="text-sm">How It Works</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-1 gap-6 text-sm">
+                <div className="space-y-2">
+                  <div className="bg-primary/10 w-10 h-10 rounded-full flex items-center justify-center mb-3 border border-primary/30">
+                    <span className="font-bold font-mono text-primary">1</span>
+                  </div>
+                  <h4 className="font-bold text-foreground font-mono uppercase tracking-wider text-xs">
+                    Analyze Current State
+                  </h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    AI analyzes your current production metrics including temperature, LSF, and chemical composition.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="bg-primary/10 w-10 h-10 rounded-full flex items-center justify-center mb-3 border border-primary/30">
+                    <span className="font-bold font-mono text-primary">2</span>
+                  </div>
+                  <h4 className="font-bold text-foreground font-mono uppercase tracking-wider text-xs">
+                    Generate Recommendations
+                  </h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Google Gemini AI generates optimized adjustments for limestone, clay, and feed rate based on your constraints.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="bg-primary/10 w-10 h-10 rounded-full flex items-center justify-center mb-3 border border-primary/30">
+                    <span className="font-bold font-mono text-primary">3</span>
+                  </div>
+                  <h4 className="font-bold text-foreground font-mono uppercase tracking-wider text-xs">
+                    Apply & Monitor
+                  </h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Review the detailed explanation, apply the recommendation, and monitor the results in real-time.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      <Card className="bg-secondary/30">
+      {/* Full-width Recommendation card (spans the page under the three-column grid) */}
+      <Card className="bg-secondary/20">
         <CardHeader>
-          <CardTitle className="text-sm">How It Works</CardTitle>
+          <CardTitle className="text-sm">AI Optimization</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-3 gap-6 text-sm">
-            <div className="space-y-2">
-              <div className="bg-primary/10 w-10 h-10 rounded-full flex items-center justify-center mb-3 border border-primary/30">
-                <span className="font-bold font-mono text-primary">1</span>
-              </div>
-              <h4 className="font-bold text-foreground font-mono uppercase tracking-wider text-xs">
-                Analyze Current State
-              </h4>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                AI analyzes your current production metrics including temperature, LSF, and chemical composition.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <div className="bg-primary/10 w-10 h-10 rounded-full flex items-center justify-center mb-3 border border-primary/30">
-                <span className="font-bold font-mono text-primary">2</span>
-              </div>
-              <h4 className="font-bold text-foreground font-mono uppercase tracking-wider text-xs">
-                Generate Recommendations
-              </h4>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Google Gemini AI generates optimized adjustments for limestone, clay, and feed rate based on your constraints.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <div className="bg-primary/10 w-10 h-10 rounded-full flex items-center justify-center mb-3 border border-primary/30">
-                <span className="font-bold font-mono text-primary">3</span>
-              </div>
-              <h4 className="font-bold text-foreground font-mono uppercase tracking-wider text-xs">
-                Apply & Monitor
-              </h4>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Review the detailed explanation, apply the recommendation, and monitor the results in real-time.
-              </p>
-            </div>
+          <div className="w-full">
+            <RecommendationCard
+              recommendation={recommendation}
+              isGenerating={isGenerating}
+              progress={progress}
+              error={error}
+            />
           </div>
         </CardContent>
       </Card>

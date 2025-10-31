@@ -29,7 +29,7 @@ export function LiveMetricsPanel({ liveMetrics }: LiveMetricsProps) {
               Primary
             </TabsTrigger>
             <TabsTrigger value="tab2" className="font-mono text-xs md:text-sm">
-              Oxides
+              Raw Mix
             </TabsTrigger>
             <TabsTrigger value="tab3" className="font-mono text-xs md:text-sm">
               Phases

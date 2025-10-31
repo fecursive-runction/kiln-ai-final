@@ -1,6 +1,6 @@
 // src/app/analytics/page.tsx
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '@/context/DataProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -23,9 +23,82 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
+const MAX_POINTS = 50;
+
 export default function AnalyticsPage() {
   const { liveMetrics, metricsHistory, loading } = useData();
   const [activeTab, setActiveTab] = useState('tab1');
+
+  // Local chart state that we append to (so the chart doesn't 'blank' on each refresh)
+  const [chartData, setChartData] = useState<any[]>([]);
+
+  const lastTimestampRef = useRef<string | null>(null);
+  const chartInitializedRef = useRef(false);
+
+  // Append-only update: when metricsHistory updates, append only new points
+  useEffect(() => {
+    if (!metricsHistory || metricsHistory.length === 0) return;
+
+    const newest = metricsHistory[metricsHistory.length - 1];
+    const newestTs = String(newest.timestamp);
+
+    // If we already processed this timestamp, do nothing
+    if (lastTimestampRef.current === newestTs) return;
+
+    // Build a point from the newest metric
+    const point = {
+      time: new Date(newest.timestamp).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }),
+      index: metricsHistory.length - 1, // Use index for stable ordering
+      kilnTemp: newest.kiln_temp,
+      feedRate: newest.feed_rate,
+      lsf: newest.lsf,
+      cao: newest.cao,
+      sio2: newest.sio2,
+      al2o3: newest.al2o3,
+      fe2o3: newest.fe2o3,
+      c3s: newest.c3s,
+      c2s: newest.c2s,
+      c3a: newest.c3a,
+      c4af: newest.c4af,
+    };
+
+    setChartData((prev) => {
+      // If this is initial load and we have no data, populate with history
+      if (!chartInitializedRef.current && prev.length === 0) {
+        chartInitializedRef.current = true;
+        const initial = metricsHistory.slice(-MAX_POINTS).map((metric, idx) => ({
+          time: new Date(metric.timestamp).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          }),
+          index: metricsHistory.length - MAX_POINTS + idx,
+          kilnTemp: metric.kiln_temp,
+          feedRate: metric.feed_rate,
+          lsf: metric.lsf,
+          cao: metric.cao,
+          sio2: metric.sio2,
+          al2o3: metric.al2o3,
+          fe2o3: metric.fe2o3,
+          c3s: metric.c3s,
+          c2s: metric.c2s,
+          c3a: metric.c3a,
+          c4af: metric.c4af,
+        }));
+        return initial;
+      }
+
+      // Append new point and keep last MAX_POINTS
+      const next = [...prev, point].slice(-MAX_POINTS);
+      return next;
+    });
+
+    lastTimestampRef.current = newestTs;
+  }, [metricsHistory]);
 
   if (loading) {
     return (
@@ -39,24 +112,6 @@ export default function AnalyticsPage() {
       </div>
     );
   }
-
-  const chartData = metricsHistory.map((metric) => ({
-    time: new Date(metric.timestamp).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
-    kilnTemp: metric.kiln_temp,
-    feedRate: metric.feed_rate,
-    lsf: metric.lsf,
-    cao: metric.cao,
-    sio2: metric.sio2,
-    al2o3: metric.al2o3,
-    fe2o3: metric.fe2o3,
-    c3s: metric.c3s,
-    c2s: metric.c2s,
-    c3a: metric.c3a,
-    c4af: metric.c4af,
-  })).reverse();
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -80,19 +135,13 @@ export default function AnalyticsPage() {
   };
 
   const MetricCard = ({ metricKey, label, unit, color, icon: Icon }: any) => {
-    // liveMetrics in DataProvider uses some different naming for keys
-    // e.g. DataProvider.LiveMetrics defines `kilnTemperature` while
-    // chart data uses `kilnTemp`. Try multiple fallbacks so the value
-    // is shown correctly:
     const getLiveMetricValue = () => {
       if (!liveMetrics) return undefined;
 
-      // explicit aliases for mismatched names
       const aliasMap: Record<string, string> = {
         kilnTemp: 'kilnTemperature',
       };
 
-      // try list: exact, alias, camel->snake
       const snake = metricKey.replace(/([A-Z])/g, '_$1').toLowerCase();
       const tryKeys = [metricKey, aliasMap[metricKey], snake];
 
@@ -107,6 +156,18 @@ export default function AnalyticsPage() {
 
     const currentValue = getLiveMetricValue();
 
+    // Calculate Y-axis domain with padding to prevent rescaling
+    const dataValues = chartData.map(d => d[metricKey]).filter(v => v !== undefined && v !== null);
+    const minVal = dataValues.length > 0 ? Math.min(...dataValues) : 0;
+    const maxVal = dataValues.length > 0 ? Math.max(...dataValues) : 100;
+    const padding = (maxVal - minVal) * 0.1 || 5;
+    const yDomain = [minVal - padding, maxVal + padding];
+
+    // Custom Y-axis tick formatter to show 1 decimal place
+    const formatYAxis = (value: number) => {
+      return value.toFixed(1);
+    };
+
     return (
       <Card className="card-hover">
         <CardHeader className="border-b border-border pb-3">
@@ -116,7 +177,6 @@ export default function AnalyticsPage() {
               {label}
             </CardTitle>
             {currentValue !== undefined && (
-              // Make value the same font size as the CardTitle (text-sm)
               <span className="text-sm font-bold font-mono" style={{ color }}>
                 {formatNumber(currentValue as number, { decimals: 2 })} {unit}
               </span>
@@ -125,7 +185,10 @@ export default function AnalyticsPage() {
         </CardHeader>
         <CardContent className="p-4">
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={chartData}>
+            <LineChart 
+              data={chartData}
+              margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis
                 dataKey="time"
@@ -138,8 +201,9 @@ export default function AnalyticsPage() {
                 stroke="hsl(var(--muted-foreground))"
                 style={{ fontSize: '10px', fontFamily: 'var(--font-space-mono)' }}
                 width={45}
-                domain={['auto', 'auto']}
+                domain={yDomain}
                 tickCount={5}
+                tickFormatter={formatYAxis}
               />
               <Tooltip content={<CustomTooltip />} />
               <Line
@@ -149,6 +213,7 @@ export default function AnalyticsPage() {
                 strokeWidth={2}
                 name={label}
                 dot={false}
+                isAnimationActive={false}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -171,7 +236,7 @@ export default function AnalyticsPage() {
         <div className="flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-primary" />
           <span className="text-xs font-mono text-muted-foreground">
-            Last 50 readings
+            Last {MAX_POINTS} readings
           </span>
         </div>
       </div>
@@ -180,7 +245,7 @@ export default function AnalyticsPage() {
         <div className="flex justify-center">
           <TabsList className="grid grid-cols-3 w-full max-w-md">
             <TabsTrigger value="tab1">Primary</TabsTrigger>
-            <TabsTrigger value="tab2">Oxides</TabsTrigger>
+            <TabsTrigger value="tab2">Raw Mix</TabsTrigger>
             <TabsTrigger value="tab3">Phases</TabsTrigger>
           </TabsList>
         </div>

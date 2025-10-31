@@ -24,6 +24,15 @@ interface OptimizationFormProps {
     fe2o3?: number;
     trigger?: boolean;
   };
+  liveMetrics?: {
+    kilnTemperature?: number;
+    feedRate?: number;
+    lsf?: number;
+    cao?: number;
+    sio2?: number;
+    al2o3?: number;
+    fe2o3?: number;
+  };
   onRecommendation?: (rec: any) => void;
   onError?: (err: string | null) => void;
   isGenerating: boolean;
@@ -31,7 +40,7 @@ interface OptimizationFormProps {
   setProgress: (val: number) => void;
 }
 
-export function OptimizationForm({ initialMetrics, onRecommendation, onError, isGenerating, setIsGenerating, setProgress }: OptimizationFormProps) {
+export function OptimizationForm({ initialMetrics, liveMetrics, onRecommendation, onError, isGenerating, setIsGenerating, setProgress }: OptimizationFormProps) {
   // recommendation and error are now managed by parent
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
@@ -60,16 +69,25 @@ export function OptimizationForm({ initialMetrics, onRecommendation, onError, is
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     // Allow navigation while generating
-  setIsGenerating(true);
-  if (onError) onError(null);
-  if (onRecommendation) onRecommendation(null);
+    setIsGenerating(true);
+    if (onError) onError(null);
+    if (onRecommendation) onRecommendation(null);
 
     // Create abort controller for cancellation
     abortControllerRef.current = new AbortController();
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData();
+    if (liveMetrics) {
+      Object.entries(liveMetrics).forEach(([key, value]) => {
+        formData.append(key, String(value));
+      });
+    }
+
+    const form = e.currentTarget;
+    const constraints = form.elements.namedItem('constraints') as HTMLTextAreaElement;
+    formData.append('constraints', constraints.value);
 
     try {
       toast({
@@ -97,14 +115,14 @@ export function OptimizationForm({ initialMetrics, onRecommendation, onError, is
       }
     } catch (err: any) {
       console.error('Optimization error:', err);
-  if (onError) onError(err.message || 'An unexpected error occurred.');
+      if (onError) onError(err.message || 'An unexpected error occurred.');
       toast({
         variant: 'destructive',
         title: 'Optimization Failed',
         description: err.message || 'Please try again.',
       });
     } finally {
-  setIsGenerating(false);
+      setIsGenerating(false);
       abortControllerRef.current = null;
     }
   };
@@ -112,8 +130,8 @@ export function OptimizationForm({ initialMetrics, onRecommendation, onError, is
   const handleCancel = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
-  setIsGenerating(false);
-  setProgress(0);
+      setIsGenerating(false);
+      setProgress(0);
       toast({
         title: 'Optimization Cancelled',
         description: 'Generation stopped.',
@@ -198,36 +216,36 @@ export function OptimizationForm({ initialMetrics, onRecommendation, onError, is
               />
             </div>
 
-            <div className="flex flex-row gap-3 items-center">
-              <div className="flex-1">
+            <div className="w-full">
+              {isGenerating ? (
+                <div className="flex gap-3">
+                  <Button
+                    type="button"
+                    disabled
+                    size="lg"
+                    className="flex-1 min-w-0 font-mono"
+                  >
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Optimizing
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCancel}
+                    size="lg"
+                    className="font-mono flex-shrink-0"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
                 <Button
                   type="submit"
-                  disabled={isGenerating}
-                  className="w-full"
                   size="lg"
+                  className="w-full font-mono"
                 >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      <span className="font-mono">Generating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      <span className="font-mono">Generate Optimization</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-              {isGenerating && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCancel}
-                  size="lg"
-                  className="font-mono"
-                >
-                  Cancel
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Optimize
                 </Button>
               )}
             </div>

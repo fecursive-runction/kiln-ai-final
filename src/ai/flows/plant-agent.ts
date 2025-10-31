@@ -50,7 +50,7 @@ export const plantAgentFlow = ai.defineFlow(
     const { chatHistory } = input;
 
     const llmResponse = await ai.generate({
-      model: 'googleai/gemini-2.0-flash-exp',
+      model: 'googleai/gemini-2.5-pro',
       system: systemPrompt,
       messages: chatHistory.map((msg) => ({
         role: (msg.role === 'assistant' ? 'model' : msg.role) as
@@ -66,8 +66,8 @@ export const plantAgentFlow = ai.defineFlow(
             name: 'getLiveMetrics',
             description:
               'Fetches the latest sensor readings from cement production systems (kiln temperature, feed rates, chemical composition)',
-            inputSchema: z.object({}),
-            outputSchema: z.array(z.any()),
+            inputSchema: z.object({}).describe('No input required.'),
+            outputSchema: z.any().describe('The latest production metric object, or null if none available.'),
           },
           async () => await getLiveMetrics()
         ),

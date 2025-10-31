@@ -1,6 +1,6 @@
 'use server';
 
-import { optimizeCementProduction, type OptimizeCementProductionInput } from '@/ai/flows/optimize-cement-production';
+import { optimizeCementProduction } from '@/ai/flows/optimize-cement-production';
 import { generateAlerts } from '@/ai/flows/generate-alerts';
 import { z } from 'zod';
 import {
@@ -75,6 +75,13 @@ export async function getMetricsHistory() {
 }
 
 const optimizationSchema = z.object({
+  kilnTemperature: z.string(),
+  feedRate: z.string(),
+  lsf: z.string(),
+  cao: z.string(),
+  sio2: z.string(),
+  al2o3: z.string(),
+  fe2o3: z.string(),
   constraints: z.string().optional(),
 });
 
@@ -91,31 +98,62 @@ export async function runOptimization(prevState: any, formData: FormData) {
   }
 
   try {
-    const liveMetrics = await getLiveMetrics();
+    const {
+      kilnTemperature,
+      feedRate,
+      lsf,
+      cao,
+      sio2,
+      al2o3,
+      fe2o3,
+      constraints,
+    } = validatedFields.data;
 
-    const { constraints } = validatedFields.data;
     const constraintsList =
       constraints && constraints.trim()
         ? constraints.split(',').map((c) => c.trim())
         : ['TARGET_LSF_94_98'];
 
-    const aiInput: OptimizeCementProductionInput = {
+    const aiInput = {
       plantId: 'poc_plant_01',
-      kilnTemperature: liveMetrics.kilnTemperature,
-      feedRate: liveMetrics.feedRate,
-      lsf: liveMetrics.lsf,
-      cao: liveMetrics.cao,
-      sio2: liveMetrics.sio2,
-      al2o3: liveMetrics.al2o3,
-      fe2o3: liveMetrics.fe2o3,
+      kilnTemperature: Number(kilnTemperature),
+      feedRate: Number(feedRate),
+      lsf: Number(lsf),
+      cao: Number(cao),
+      sio2: Number(sio2),
+      al2o3: Number(al2o3),
+      fe2o3: Number(fe2o3),
       constraints: constraintsList,
     };
 
     const aiRecommendation = await optimizeCementProduction(aiInput);
 
+    // Calculate predicted LSF from the AI adjustments (AI does NOT return predictedLSF)
+    const parseAdjustment = (adjustmentString: string) => {
+      try {
+        const numericValue = parseFloat(String(adjustmentString).replace('%', ''));
+        if (isNaN(numericValue)) return 0;
+        return numericValue / 100; // percent -> decimal
+      } catch {
+        return 0;
+      }
+    };
+
+    const limestoneAdj = parseAdjustment(aiRecommendation.limestoneAdjustment);
+    const clayAdj = parseAdjustment(aiRecommendation.clayAdjustment);
+
+    const predictedCao = aiInput.cao * (1 + limestoneAdj);
+    const predictedSio2 = aiInput.sio2 * (1 + clayAdj);
+    const predictedAl2o3 = aiInput.al2o3 * (1 + clayAdj);
+
+    const denominator = 2.8 * predictedSio2 + 1.18 * predictedAl2o3 + 0.65 * aiInput.fe2o3;
+    const predictedLSF = denominator === 0 ? 0 : (predictedCao / denominator) * 100;
+
     const finalRecommendation = {
       ...aiRecommendation,
       timestamp: new Date().toISOString(),
+      originalMetrics: aiInput,
+      predictedLSF: parseFloat(Number.isFinite(predictedLSF) ? predictedLSF.toFixed(1) : '0'),
     };
 
     return {
@@ -163,19 +201,27 @@ export async function getAiAlerts() {
 }
 
 export async function applyOptimization(prevState: any, formData: FormData) {
-  const currentMetrics = await getLiveMetrics();
+  const originalMetrics = {
+    kilnTemperature: parseFloat(formData.get('kilnTemperature') as string),
+    feedRate: parseFloat(formData.get('feedRate') as string),
+    lsf: parseFloat(formData.get('lsf') as string),
+    cao: parseFloat(formData.get('cao') as string),
+    sio2: parseFloat(formData.get('sio2') as string),
+    al2o3: parseFloat(formData.get('al2o3') as string),
+    fe2o3: parseFloat(formData.get('fe2o3') as string),
+  };
 
   const lsf = parseFloat(formData.get('predictedLSF') as string);
   const limestoneAdj = parseFloat((formData.get('limestoneAdjustment') as string).replace('%', ''));
   const clayAdj = parseFloat((formData.get('clayAdjustment') as string).replace('%', ''));
 
-  const newCao = currentMetrics.cao * (1 + limestoneAdj / 100);
-  const newSio2 = currentMetrics.sio2 * (1 - clayAdj / 200);
-  const newAl2o3 = currentMetrics.al2o3 * (1 - clayAdj / 200);
+  const newCao = originalMetrics.cao * (1 + limestoneAdj / 100);
+  const newSio2 = originalMetrics.sio2 * (1 - clayAdj / 200);
+  const newAl2o3 = originalMetrics.al2o3 * (1 - clayAdj / 200);
 
   const newFeedRate = parseFloat(formData.get('feedRateSetpoint') as string);
   const newKilnTemp =
-    currentMetrics.kilnTemperature + (lsf > 98 ? -5 : lsf < 94 ? 5 : 0);
+    originalMetrics.kilnTemperature + (lsf > 98 ? -5 : lsf < 94 ? 5 : 0);
 
   const freeLime = 1.5;
   const cao_prime = newCao - freeLime;
@@ -184,11 +230,11 @@ export async function applyOptimization(prevState: any, formData: FormData) {
     4.071 * cao_prime -
       7.602 * newSio2 -
       6.719 * newAl2o3 -
-      1.43 * currentMetrics.fe2o3
+      1.43 * originalMetrics.fe2o3
   );
   const newC2S = Math.max(0, 2.867 * newSio2 - 0.754 * newC3S);
-  const newC3A = Math.max(0, 2.65 * newAl2o3 - 1.692 * currentMetrics.fe2o3);
-  const newC4AF = Math.max(0, 3.043 * currentMetrics.fe2o3);
+  const newC3A = Math.max(0, 2.65 * newAl2o3 - 1.692 * originalMetrics.fe2o3);
+  const newC4AF = Math.max(0, 3.043 * originalMetrics.fe2o3);
 
   try {
     const payload = {
@@ -200,16 +246,25 @@ export async function applyOptimization(prevState: any, formData: FormData) {
       cao: parseFloat(newCao.toFixed(2)),
       sio2: parseFloat(newSio2.toFixed(2)),
       al2o3: parseFloat(newAl2o3.toFixed(2)),
-      fe2o3: parseFloat(currentMetrics.fe2o3.toFixed(2)),
+      fe2o3: parseFloat(originalMetrics.fe2o3.toFixed(2)),
       c3s: parseFloat(newC3S.toFixed(2)),
       c2s: parseFloat(newC2S.toFixed(2)),
       c3a: parseFloat(newC3A.toFixed(2)),
       c4af: parseFloat(newC4AF.toFixed(2)),
     };
+    // Insert the new metric asynchronously (fire-and-forget) so the UI
+    // receives a fast response. We still log errors but won't block the
+    // action on network latency to Supabase.
+    insertMetric(payload as any)
+      .then(() => {
+        // eslint-disable-next-line no-console
+        console.log('Applied optimization: metric inserted (async)');
+      })
+      .catch((err: any) => {
+        console.error('Failed to insert metric (async):', err);
+      });
 
-  await insertMetric(payload as any);
-
-  return { success: true, message: 'Optimization applied successfully!' };
+    return { success: true, message: 'Optimization applied successfully!' };
   } catch (error: any) {
     console.error('Failed to apply optimization:', error);
     return { success: false, message: 'Failed to apply optimization.' };

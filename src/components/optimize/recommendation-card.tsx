@@ -28,6 +28,15 @@ interface OptimizationRecommendation {
   clayAdjustment: string;
   predictedLSF: number;
   explanation: string;
+  originalMetrics: {
+    kilnTemperature: number;
+    feedRate: number;
+    lsf: number;
+    cao: number;
+    sio2: number;
+    al2o3: number;
+    fe2o3: number;
+  };
 }
 
 interface RecommendationCardProps {
@@ -216,7 +225,7 @@ export function RecommendationCard(props: RecommendationCardProps) {
                   </span>
                 </div>
                 <p className="text-2xl font-bold font-mono text-primary">
-                  {recommendation.feedRateSetpoint.toFixed(1)}{' '}
+                  {Number.isFinite(recommendation.feedRateSetpoint) ? recommendation.feedRateSetpoint.toFixed(1) : '-'}{' '}
                   <span className="text-base text-muted-foreground">TPH</span>
                 </p>
               </CardContent>
@@ -231,7 +240,7 @@ export function RecommendationCard(props: RecommendationCardProps) {
                   </span>
                 </div>
                 <p className="text-2xl font-bold font-mono text-chart-purple">
-                  {recommendation.predictedLSF.toFixed(1)}{' '}
+                  {Number.isFinite(recommendation.predictedLSF) ? recommendation.predictedLSF.toFixed(1) : '-'}{' '}
                   <span className="text-base text-muted-foreground">%</span>
                 </p>
               </CardContent>
@@ -301,6 +310,13 @@ export function RecommendationCard(props: RecommendationCardProps) {
               name="feedRateSetpoint"
               value={recommendation.feedRateSetpoint}
             />
+            <input type="hidden" name="kilnTemperature" value={recommendation.originalMetrics.kilnTemperature} />
+            <input type="hidden" name="feedRate" value={recommendation.originalMetrics.feedRate} />
+            <input type="hidden" name="lsf" value={recommendation.originalMetrics.lsf} />
+            <input type="hidden" name="cao" value={recommendation.originalMetrics.cao} />
+            <input type="hidden" name="sio2" value={recommendation.originalMetrics.sio2} />
+            <input type="hidden" name="al2o3" value={recommendation.originalMetrics.al2o3} />
+            <input type="hidden" name="fe2o3" value={recommendation.originalMetrics.fe2o3} />
 
             {state.success ? (
               <div className="flex items-center justify-center gap-2 p-4 bg-success/20 rounded-lg border border-success/50">
