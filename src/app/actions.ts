@@ -223,6 +223,7 @@ export async function applyOptimization(prevState: any, formData: FormData) {
   const newKilnTemp =
     originalMetrics.kilnTemperature + (lsf > 98 ? -5 : lsf < 94 ? 5 : 0);
 
+  // Recalculate Bogue's phases based on new composition
   const freeLime = 1.5;
   const cao_prime = newCao - freeLime;
   const newC3S = Math.max(
@@ -236,39 +237,33 @@ export async function applyOptimization(prevState: any, formData: FormData) {
   const newC3A = Math.max(0, 2.65 * newAl2o3 - 1.692 * originalMetrics.fe2o3);
   const newC4AF = Math.max(0, 3.043 * originalMetrics.fe2o3);
 
-  try {
-    const payload = {
-      timestamp: new Date().toISOString(),
-      plant_id: 'poc_plant_01',
-      kiln_temp: parseFloat(newKilnTemp.toFixed(2)),
-      feed_rate: parseFloat(newFeedRate.toFixed(2)),
-      lsf: parseFloat(lsf.toFixed(1)),
-      cao: parseFloat(newCao.toFixed(2)),
-      sio2: parseFloat(newSio2.toFixed(2)),
-      al2o3: parseFloat(newAl2o3.toFixed(2)),
-      fe2o3: parseFloat(originalMetrics.fe2o3.toFixed(2)),
-      c3s: parseFloat(newC3S.toFixed(2)),
-      c2s: parseFloat(newC2S.toFixed(2)),
-      c3a: parseFloat(newC3A.toFixed(2)),
-      c4af: parseFloat(newC4AF.toFixed(2)),
-    };
-    // Insert the new metric asynchronously (fire-and-forget) so the UI
-    // receives a fast response. We still log errors but won't block the
-    // action on network latency to Supabase.
-    insertMetric(payload as any)
-      .then(() => {
-        // eslint-disable-next-line no-console
-        console.log('Applied optimization: metric inserted (async)');
-      })
-      .catch((err: any) => {
-        console.error('Failed to insert metric (async):', err);
-      });
+  const payload = {
+    timestamp: new Date().toISOString(),
+    plant_id: 'poc_plant_01',
+    kiln_temp: parseFloat(newKilnTemp.toFixed(2)),
+    feed_rate: parseFloat(newFeedRate.toFixed(2)),
+    lsf: parseFloat(lsf.toFixed(1)),
+    cao: parseFloat(newCao.toFixed(2)),
+    sio2: parseFloat(newSio2.toFixed(2)),
+    al2o3: parseFloat(newAl2o3.toFixed(2)),
+    fe2o3: parseFloat(originalMetrics.fe2o3.toFixed(2)),
+    c3s: parseFloat(newC3S.toFixed(2)),
+    c2s: parseFloat(newC2S.toFixed(2)),
+    c3a: parseFloat(newC3A.toFixed(2)),
+    c4af: parseFloat(newC4AF.toFixed(2)),
+  };
 
-    return { success: true, message: 'Optimization applied successfully!' };
-  } catch (error: any) {
-    console.error('Failed to apply optimization:', error);
-    return { success: false, message: 'Failed to apply optimization.' };
-  }
+  // ✅ FIX: Fire-and-forget - don't await the database call
+  insertMetric(payload as any)
+    .then(() => {
+      console.log('Applied optimization: metric inserted (async)');
+    })
+    .catch((err: any) => {
+      console.error('Failed to insert metric (async):', err);
+    });
+
+  // ✅ Return immediately - don't wait for DB
+  return { success: true, message: 'Optimization applied successfully!' };
 }
 
 export async function askPlantGuardian(

@@ -146,11 +146,6 @@ export function RecommendationCard(props: RecommendationCardProps) {
                 Generating AI recommendations
               </p>
             </div>
-            <div className="pt-3 border-t border-border">
-              <p className="text-xs text-muted-foreground italic">
-                💡 You can navigate to other pages while this generates
-              </p>
-            </div>
           </div>
         </CardContent>
       </Card>

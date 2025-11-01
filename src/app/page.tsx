@@ -36,24 +36,7 @@ export default function DashboardPage() {
         <LiveMetricsPanel liveMetrics={liveMetrics} />
         <AlertsFeed alerts={alerts} liveMetrics={liveMetrics} />
         
-        {/* Export Section */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex flex-col gap-3">
-              <CardTitle className="text-sm">Export Reports</CardTitle>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1">
-                  <FileText className="w-4 h-4 mr-2" />
-                  PDF
-                </Button>
-                <Button variant="outline" size="sm" className="flex-1">
-                  <Download className="w-4 h-4 mr-2" />
-                  CSV
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
+
       </div>
 
       {/* Desktop Layout */}
@@ -75,24 +58,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* BOTTOM SECTION - Export */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">Export Reports</CardTitle>
-              <div className="flex gap-3">
-                <Button variant="outline" size="sm">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Export PDF
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export CSV
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
+        
       </div>
     </div>
   );
