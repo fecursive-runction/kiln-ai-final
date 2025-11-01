@@ -14,16 +14,103 @@ interface Message {
   timestamp: Date;
 }
 
-export default function PlantGPTPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: '🔥 Welcome to PlantGPT! I\'m your cement plant optimization guardian. I can help you with kiln operations, raw mix chemistry, production analytics, and process optimization. What would you like to know?',
-      timestamp: new Date()
+// Helper function to render markdown-like text
+const renderMarkdown = (text: string) => {
+  // Split by double newlines for paragraphs
+  const paragraphs = text.split('\n\n');
+  
+  return paragraphs.map((paragraph, pIdx) => {
+    // Check if it's a list
+    const lines = paragraph.split('\n');
+    const isList = lines.every(line => line.trim().startsWith('-') || line.trim().startsWith('*') || line.trim() === '');
+    
+    if (isList && lines.length > 1) {
+      return (
+        <ul key={pIdx} className="list-disc list-inside space-y-1 my-2">
+          {lines.filter(line => line.trim()).map((line, lIdx) => (
+            <li key={lIdx} className="ml-2">
+              {formatInlineMarkdown(line.replace(/^[-*]\s*/, ''))}
+            </li>
+          ))}
+        </ul>
+      );
     }
-  ]);
+    
+    // Regular paragraph
+    return (
+      <p key={pIdx} className="my-2">
+        {formatInlineMarkdown(paragraph)}
+      </p>
+    );
+  });
+};
+
+// Format inline markdown (bold, italic, code)
+const formatInlineMarkdown = (text: string) => {
+  const parts: (string | JSX.Element)[] = [];
+  let currentIndex = 0;
+  let key = 0;
+
+  // Regex patterns for markdown
+  const patterns = [
+    { regex: /\*\*(.+?)\*\*/g, tag: 'strong', className: 'font-bold' },
+    { regex: /\*(.+?)\*/g, tag: 'em', className: 'italic' },
+    { regex: /`(.+?)`/g, tag: 'code', className: 'bg-secondary px-1 py-0.5 rounded text-xs font-mono' },
+  ];
+
+  // Find all matches
+  const allMatches: Array<{ index: number; length: number; content: string; pattern: typeof patterns[0] }> = [];
+  
+  patterns.forEach(pattern => {
+    let match;
+    const regex = new RegExp(pattern.regex.source, 'g');
+    while ((match = regex.exec(text)) !== null) {
+      allMatches.push({
+        index: match.index,
+        length: match[0].length,
+        content: match[1],
+        pattern
+      });
+    }
+  });
+
+  // Sort matches by index
+  allMatches.sort((a, b) => a.index - b.index);
+
+  // Build the formatted text
+  allMatches.forEach(match => {
+    // Add text before match
+    if (currentIndex < match.index) {
+      parts.push(text.substring(currentIndex, match.index));
+    }
+
+    // Add formatted match
+    const Tag = match.pattern.tag as keyof JSX.IntrinsicElements;
+    parts.push(
+      <Tag key={key++} className={match.pattern.className}>
+        {match.content}
+      </Tag>
+    );
+
+    currentIndex = match.index + match.length;
+  });
+
+  // Add remaining text
+  if (currentIndex < text.length) {
+    parts.push(text.substring(currentIndex));
+  }
+
+  return parts.length > 0 ? parts : text;
+};
+
+// Storage key for persisting chat history
+const STORAGE_KEY = 'plantgpt_chat_history';
+
+export default function PlantGPTPage() {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -33,6 +120,52 @@ export default function PlantGPTPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Load chat history from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Convert timestamp strings back to Date objects
+        const restoredMessages = parsed.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+        setMessages(restoredMessages);
+      } else {
+        // Initialize with welcome message if no history
+        const welcomeMessage: Message = {
+          role: 'assistant',
+          content: '🔥 Welcome to PlantGPT! I\'m your cement plant optimization guardian. I can help you with kiln operations, raw mix chemistry, production analytics, and process optimization. What would you like to know?',
+          timestamp: new Date()
+        };
+        setMessages([welcomeMessage]);
+      }
+    } catch (error) {
+      console.error('Failed to load chat history:', error);
+      // Fallback to welcome message
+      const welcomeMessage: Message = {
+        role: 'assistant',
+        content: '🔥 Welcome to PlantGPT! I\'m your cement plant optimization guardian. I can help you with kiln operations, raw mix chemistry, production analytics, and process optimization. What would you like to know?',
+        timestamp: new Date()
+      };
+      setMessages([welcomeMessage]);
+    } finally {
+      setIsInitialized(true);
+    }
+  }, []);
+
+  // Save chat history to localStorage whenever messages change
+  useEffect(() => {
+    if (isInitialized && messages.length > 0) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+      } catch (error) {
+        console.error('Failed to save chat history:', error);
+      }
+    }
+  }, [messages, isInitialized]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +212,18 @@ export default function PlantGPTPage() {
     }
   };
 
+  const handleClearHistory = () => {
+    if (confirm('Are you sure you want to clear the chat history?')) {
+      localStorage.removeItem(STORAGE_KEY);
+      const welcomeMessage: Message = {
+        role: 'assistant',
+        content: '🔥 Welcome to PlantGPT! I\'m your cement plant optimization guardian. I can help you with kiln operations, raw mix chemistry, production analytics, and process optimization. What would you like to know?',
+        timestamp: new Date()
+      };
+      setMessages([welcomeMessage]);
+    }
+  };
+
   const suggestedQuestions = [
     { icon: Flame, text: 'What is the ideal LSF range for cement production?' },
     { icon: Settings, text: 'How does kiln temperature affect clinker quality?' },
@@ -89,6 +234,14 @@ export default function PlantGPTPage() {
   const handleQuickAction = (text: string) => {
     setInput(text);
   };
+
+  if (!isInitialized) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="text-muted-foreground">Loading chat history...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 flex flex-col">
@@ -106,10 +259,20 @@ export default function PlantGPTPage() {
             </p>
           </div>
         </div>
-        <Badge variant="success" className="gap-2">
-          <Sparkles className="w-3 h-3" />
-          Live
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="success" className="gap-2">
+            <Sparkles className="w-3 h-3" />
+            Live
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClearHistory}
+            className="text-xs"
+          >
+            Clear History
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -117,7 +280,6 @@ export default function PlantGPTPage() {
         {/* Suggestions Panel */}
         <div className="lg:col-span-3">
           <Card className="flex flex-col">
-            {/* MODIFICATION 1: Added p-4 for consistent header padding */}
             <CardHeader className="p-4 border-b border-border">
               <CardTitle className="text-sm flex items-center gap-2 font-mono uppercase tracking-wider">
                 <Sparkles className="w-4 h-4 text-primary" />
@@ -170,15 +332,13 @@ export default function PlantGPTPage() {
         
         {/* Chat Area */}
         <div className="lg:col-span-9 flex flex-col">
-          {/* MODIFICATION 2: Added h-full to make card stretch */}
           <Card className="flex flex-col h-full">
             <CardHeader className="p-4 border-b border-border flex-shrink-0">
               <CardTitle className="text-sm flex items-center gap-2 font-mono uppercase tracking-wider">
                 <Bot className="w-4 h-4 text-primary" />
-                Conversation
+                Conversation ({messages.length} messages)
               </CardTitle>
             </CardHeader>
-            {/* MODIFICATION 3: Replaced h-[70vh] with flex-1 to fill space */}
             <CardContent className="overflow-y-auto p-6 flex-1">
               <div className="space-y-4">
                 {messages.map((message, index) => (
@@ -200,9 +360,15 @@ export default function PlantGPTPage() {
                           : 'bg-secondary border border-border'
                       }`}
                     >
-                      <p className="text-sm leading-relaxed whitespace-pre-line">
-                        {message.content}
-                      </p>
+                      <div className="text-sm leading-relaxed">
+                        {message.role === 'assistant' ? (
+                          <div className="space-y-1">
+                            {renderMarkdown(message.content)}
+                          </div>
+                        ) : (
+                          <p className="whitespace-pre-line">{message.content}</p>
+                        )}
+                      </div>
                       <span className={`text-xs font-mono mt-2 block ${
                         message.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'
                       }`}>
