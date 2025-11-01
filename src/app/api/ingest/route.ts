@@ -94,14 +94,31 @@ export async function POST() {
     }
 
     // --- Metric Simulation ---
-    let bias = scenario.active ? scenario.bias : 0.5;
+    let lsf_bias = (scenario.active && scenario.targetMetric === 'lsf') ? scenario.bias : 0.5;
+    let kiln_temp_bias = (scenario.active && scenario.targetMetric === 'kiln_temp') ? scenario.bias : 0.5;
+
+    // Apply a corrective "mean reversion" force if metrics are outside critical thresholds and not in a scenario
+    if (!scenario.active || scenario.targetMetric !== 'lsf') {
+      if (lastMetric.lsf > LSF_CRITICAL_HIGH) {
+        lsf_bias = 0.6; // Trend down
+      } else if (lastMetric.lsf < LSF_CRITICAL_LOW) {
+        lsf_bias = 0.4; // Trend up
+      }
+    }
+    if (!scenario.active || scenario.targetMetric !== 'kiln_temp') {
+      if (lastMetric.kiln_temp > KILN_TEMP_CRITICAL_HIGH) {
+        kiln_temp_bias = 0.6; // Trend down
+      } else if (lastMetric.kiln_temp < KILN_TEMP_CRITICAL_LOW) {
+        kiln_temp_bias = 0.4; // Trend up
+      }
+    }
 
     // 1. Primary Metrics ("Drivers")
     const kiln_temp_step = 1.5;
-    const newKilnTemp = lastMetric.kiln_temp + (Math.random() - bias) * kiln_temp_step;
+    const newKilnTemp = lastMetric.kiln_temp + (Math.random() - kiln_temp_bias) * kiln_temp_step;
 
     const lsf_step = 0.1;
-    const newLsf = lastMetric.lsf + (Math.random() - bias) * lsf_step;
+    const newLsf = lastMetric.lsf + (Math.random() - lsf_bias) * lsf_step;
     
     const feed_rate_step = 0.5;
     const newFeedRate = lastMetric.feed_rate + (Math.random() - 0.5) * feed_rate_step;
