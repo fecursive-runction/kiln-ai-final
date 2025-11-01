@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useData } from '@/context/DataProvider';
 import { OptimizationForm } from '@/components/optimize/optimization-form';
@@ -10,7 +10,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Sparkles, Activity } from 'lucide-react';
 import { formatNumber } from '@/lib/formatters';
 
-// src/app/optimize/page.tsx
 function OptimizationPageContent() {
   const searchParams = useSearchParams();
   const { liveMetrics, loading } = useData();
@@ -35,27 +34,6 @@ function OptimizationPageContent() {
       : undefined,
     trigger: searchParams.get('trigger') === 'true',
   };
-
-  // State for optimization result and error
-  const [recommendation, setRecommendation] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [progress, setProgress] = useState(0);
-
-  // Progress simulation
-  useEffect(() => {
-    if (isGenerating) {
-      const interval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 90) return prev;
-          return prev + Math.random() * 10;
-        });
-      }, 500);
-      return () => clearInterval(interval);
-    } else {
-      setProgress(0);
-    }
-  }, [isGenerating]);
 
   if (loading) {
     return (
@@ -187,26 +165,19 @@ function OptimizationPageContent() {
           </Card>
         </div>
 
-        {/* MIDDLE COLUMN - Optimization Form + Recommendation (below) */}
+        {/* MIDDLE COLUMN - Optimization Form */}
         <div>
           <OptimizationForm
             initialMetrics={
               Object.values(initialMetrics).some((v) => v !== undefined)
                 ? initialMetrics
                 : undefined
-            } as any // Cast to any to bypass type checking for now
-            liveMetrics={liveMetrics}
-            onRecommendation={setRecommendation}
-            onError={setError}
-            isGenerating={isGenerating}
-            setIsGenerating={setIsGenerating}
-            setProgress={setProgress}
+            } 
+            liveMetrics={liveMetrics?? undefined}
           />
-
-          {/* Recommendation card removed from the middle column so it can be rendered full-width below */}
         </div>
 
-        {/* RIGHT COLUMN - How It Works (moved beside the optimization form) */}
+        {/* RIGHT COLUMN - How It Works */}
         <div>
           <Card className="h-full bg-secondary/30">
             <CardHeader>
@@ -246,7 +217,7 @@ function OptimizationPageContent() {
                     Apply & Monitor
                   </h4>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Review the detailed explanation, apply the recommendation, and monitor the results in real-time.
+                    Review the detailed explanation, apply the recommendation, and monitor the results in real-time as data adapts.
                   </p>
                 </div>
               </div>
@@ -255,19 +226,14 @@ function OptimizationPageContent() {
         </div>
       </div>
 
-      {/* Full-width Recommendation card (spans the page under the three-column grid) */}
+      {/* Full-width Recommendation card */}
       <Card className="bg-secondary/20">
         <CardHeader>
           <CardTitle className="text-sm">AI Optimization</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="w-full">
-            <RecommendationCard
-              recommendation={recommendation}
-              isGenerating={isGenerating}
-              progress={progress}
-              error={error}
-            />
+            <RecommendationCard />
           </div>
         </CardContent>
       </Card>

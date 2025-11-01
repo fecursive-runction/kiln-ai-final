@@ -6,8 +6,7 @@ import {
   useState,
   useEffect,
   ReactNode,
-  Dispatch,
-  SetStateAction,
+  useRef,
 } from 'react';
 import { getLiveMetrics, getAiAlerts, getMetricsHistory } from '@/app/actions';
 import { toast } from '@/hooks/use-toast';
@@ -57,6 +56,25 @@ export interface ChartDataPoint {
   temperature: number;
 }
 
+export interface OptimizationRecommendation {
+  recommendationId: string;
+  timestamp: string;
+  feedRateSetpoint: number;
+  limestoneAdjustment: string;
+  clayAdjustment: string;
+  predictedLSF: number;
+  explanation: string;
+  originalMetrics: {
+    kilnTemperature: number;
+    feedRate: number;
+    lsf: number;
+    cao: number;
+    sio2: number;
+    al2o3: number;
+    fe2o3: number;
+  };
+}
+
 interface DataContextValue {
   liveMetrics: LiveMetrics | null;
   alerts: Alert[];
@@ -67,10 +85,26 @@ interface DataContextValue {
   startPlant: () => Promise<void>;
   stopPlant: () => void;
   emergencyStop: () => void;
-  optimizationContext: {
-    pendingOptimization: { promise: Promise<any>; startTime: number } | null;
-    setPendingOptimization: Dispatch<SetStateAction<{ promise: Promise<any>; startTime: number } | null>>;
+  
+  // Optimization state
+  pendingOptimization: {
+    isGenerating: boolean;
+    progress: number;
+    error: string | null;
+    recommendation: OptimizationRecommendation | null;
   };
+  
+  // Optimization actions
+  startOptimization: (formData: FormData) => Promise<void>;
+  clearOptimization: () => void;
+  
+  // Application state
+  pendingApplication: {
+    isApplying: boolean;
+    success: boolean;
+    message: string;
+  };
+  applyRecommendation: (recommendation: OptimizationRecommendation) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextValue>({
@@ -83,17 +117,22 @@ const DataContext = createContext<DataContextValue>({
   startPlant: async () => {},
   stopPlant: () => {},
   emergencyStop: () => {},
-  optimizationContext: {
-    pendingOptimization: null,
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    setPendingOptimization: () => {},
+  pendingOptimization: {
+    isGenerating: false,
+    progress: 0,
+    error: null,
+    recommendation: null,
   },
+  startOptimization: async () => {},
+  clearOptimization: () => {},
+  pendingApplication: {
+    isApplying: false,
+    success: false,
+    message: '',
+  },
+  applyRecommendation: async () => {},
 });
 
-/**
- * Transform history data to chart format
- * Keeps last 50 points in chronological order
- */
 function transformHistoryToChartData(
   history: ProductionMetric[]
 ): ChartDataPoint[] {
@@ -102,16 +141,10 @@ function transformHistoryToChartData(
       time: formatChartTime(metric.timestamp),
       temperature: metric.kiln_temp,
     }))
-    .reverse() // Chronological order (oldest → newest)
-    .slice(-50); // Keep last 50 points maximum
+    .reverse()
+    .slice(-50);
 }
 
-/**
- * DataProvider Component
- * Manages real-time data fetching with dual-interval system:
- * 1. Ingestion interval - triggers backend data generation every 5s
- * 2. Polling interval - fetches fresh data every 5s
- */
 export function DataProvider({ children }: { children: ReactNode }) {
   const [liveMetrics, setLiveMetrics] = useState<LiveMetrics | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -119,14 +152,28 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [plantRunning, setPlantRunning] = useState(true);
-  const ingestRef = { current: 0 as any } as { current: any };
+  const ingestRef = useRef<any>(0);
 
-  const [pendingOptimization, setPendingOptimization] = useState<{
-    promise: Promise<any>;
-    startTime: number;
-  } | null>(null);
+  // Optimization state
+  const [optimizationState, setOptimizationState] = useState({
+    isGenerating: false,
+    progress: 0,
+    error: null as string | null,
+    recommendation: null as OptimizationRecommendation | null,
+  });
 
-  // Data fetching function (used by both initial load and refresh)
+  // Application state
+  const [applicationState, setApplicationState] = useState({
+    isApplying: false,
+    success: false,
+    message: '',
+  });
+
+  // Track active optimization promise
+  const optimizationPromiseRef = useRef<Promise<any> | null>(null);
+  const progressIntervalRef = useRef<any>(null);
+
+  // Data fetching function
   const fetchData = async () => {
     try {
       const [metrics, aiAlerts, history] = await Promise.all([
@@ -137,14 +184,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       if (metrics) setLiveMetrics(metrics);
       if (aiAlerts) {
-        // Ensure severity is correctly typed
         const typedAlerts: Alert[] = aiAlerts.map(alert => ({
           ...alert, severity: alert.severity as 'CRITICAL' | 'WARNING' }));
         setAlerts(typedAlerts);
       }
       if (history) {
         setMetricsHistory(history);
-        // Transform for chart
         const transformed = transformHistoryToChartData(history);
         setChartData(transformed);
       }
@@ -156,11 +201,199 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Interval 1: Data Ingestion Trigger
-  // Calls /api/ingest to generate new simulated data when plantRunning
+  // Start optimization (persistent across navigation)
+  const startOptimization = async (formData: FormData) => {
+    // If already generating, ignore
+    if (optimizationState.isGenerating) {
+      toast({
+        title: 'Optimization in progress',
+        description: 'Please wait for current optimization to complete.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Reset state
+    setOptimizationState({
+      isGenerating: true,
+      progress: 0,
+      error: null,
+      recommendation: null,
+    });
+
+    // Start progress simulation
+    progressIntervalRef.current = setInterval(() => {
+      setOptimizationState(prev => ({
+        ...prev,
+        progress: Math.min(prev.progress + Math.random() * 10, 90),
+      }));
+    }, 500);
+
+    toast({
+      title: 'Generating optimization...',
+      description: 'This may take 10-15 seconds. Feel free to navigate away.',
+    });
+
+    // Import the action dynamically to avoid circular deps
+    const { runOptimization } = await import('@/app/actions');
+
+    // Start the optimization (non-blocking)
+    const promise = runOptimization({ error: null, recommendation: null }, formData);
+    optimizationPromiseRef.current = promise;
+
+    try {
+      const result = await promise;
+
+      // Clear progress interval
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+
+      if (result.error) {
+        setOptimizationState({
+          isGenerating: false,
+          progress: 0,
+          error: result.error,
+          recommendation: null,
+        });
+        toast({
+          variant: 'destructive',
+          title: 'Optimization Error',
+          description: result.error,
+        });
+      } else if (result.recommendation) {
+        setOptimizationState({
+          isGenerating: false,
+          progress: 100,
+          error: null,
+          recommendation: result.recommendation,
+        });
+        toast({
+          title: 'Optimization Complete',
+          description: 'Recommendation generated successfully.',
+        });
+      }
+    } catch (err: any) {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+
+      console.error('Optimization error:', err);
+      setOptimizationState({
+        isGenerating: false,
+        progress: 0,
+        error: err.message || 'An unexpected error occurred.',
+        recommendation: null,
+      });
+      toast({
+        variant: 'destructive',
+        title: 'Optimization Failed',
+        description: err.message || 'Please try again.',
+      });
+    } finally {
+      optimizationPromiseRef.current = null;
+    }
+  };
+
+  // Clear optimization state
+  const clearOptimization = () => {
+    setOptimizationState({
+      isGenerating: false,
+      progress: 0,
+      error: null,
+      recommendation: null,
+    });
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+  };
+
+  // Apply recommendation (persistent across navigation)
+  const applyRecommendation = async (recommendation: OptimizationRecommendation) => {
+    if (applicationState.isApplying) {
+      toast({
+        title: 'Application in progress',
+        description: 'Please wait for current application to complete.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setApplicationState({
+      isApplying: true,
+      success: false,
+      message: '',
+    });
+
+    toast({
+      title: 'Applying recommendation...',
+      description: 'Updating plant parameters.',
+    });
+
+    try {
+      // Import action
+      const { applyOptimization } = await import('@/app/actions');
+
+      // Create FormData
+      const formData = new FormData();
+      formData.append('predictedLSF', recommendation.predictedLSF.toString());
+      formData.append('limestoneAdjustment', recommendation.limestoneAdjustment);
+      formData.append('clayAdjustment', recommendation.clayAdjustment);
+      formData.append('feedRateSetpoint', recommendation.feedRateSetpoint.toString());
+      formData.append('kilnTemperature', recommendation.originalMetrics.kilnTemperature.toString());
+      formData.append('feedRate', recommendation.originalMetrics.feedRate.toString());
+      formData.append('lsf', recommendation.originalMetrics.lsf.toString());
+      formData.append('cao', recommendation.originalMetrics.cao.toString());
+      formData.append('sio2', recommendation.originalMetrics.sio2.toString());
+      formData.append('al2o3', recommendation.originalMetrics.al2o3.toString());
+      formData.append('fe2o3', recommendation.originalMetrics.fe2o3.toString());
+
+      const result = await applyOptimization({ success: false, message: '' }, formData);
+
+      setApplicationState({
+        isApplying: false,
+        success: result.success,
+        message: result.message,
+      });
+
+      if (result.success) {
+        toast({
+          title: 'Recommendation Applied',
+          description: 'Plant parameters updated successfully. Data will reflect changes shortly.',
+        });
+        
+        // Refresh data after short delay
+        setTimeout(() => {
+          fetchData();
+        }, 2000);
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Application Failed',
+          description: result.message,
+        });
+      }
+    } catch (err: any) {
+      console.error('Application error:', err);
+      setApplicationState({
+        isApplying: false,
+        success: false,
+        message: err.message || 'Failed to apply recommendation.',
+      });
+      toast({
+        variant: 'destructive',
+        title: 'Application Failed',
+        description: err.message || 'Please try again.',
+      });
+    }
+  };
+
+  // Ingestion interval
   useEffect(() => {
     const startIngest = () => {
-      // avoid multiple intervals
       if (ingestRef.current) return;
       ingestRef.current = setInterval(async () => {
         try {
@@ -168,7 +401,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         } catch (error) {
           console.error('Ingestion failed:', error);
         }
-      }, 5000); // 5 seconds
+      }, 5000);
     };
 
     const stopIngest = () => {
@@ -184,19 +417,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return () => stopIngest();
   }, [plantRunning]);
 
-  // Interval 2: Data Polling
-  // Fetches fresh data from server actions
+  // Polling interval
   useEffect(() => {
-    // Initial fetch
     fetchData();
-
-    // Poll every 5 seconds
     const pollInterval = setInterval(fetchData, 5000);
-
     return () => clearInterval(pollInterval);
   }, []);
 
-  // Optional: Only fetch when tab is visible (performance optimization)
+  // Visibility change handler
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
@@ -209,6 +437,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, []);
+
   return (
     <DataContext.Provider
       value={{
@@ -219,7 +456,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         loading,
         refreshData: fetchData,
         startPlant: async () => {
-          // start ingestion and fetch an immediate data point
           setPlantRunning(true);
           try {
             await fetchData();
@@ -234,15 +470,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
           toast({ title: 'Plant stopped', description: 'Data ingestion paused.' });
         },
         emergencyStop: () => {
-          // stop ingestion but keep the last known live metrics visible
           setPlantRunning(false);
           toast({ title: 'EMERGENCY STOP', description: 'All systems halted. Check plant immediately.', variant: 'destructive' });
-          // Optionally, add an alert here in the future
         },
-        optimizationContext: {
-          pendingOptimization,
-          setPendingOptimization,
-        },
+        pendingOptimization: optimizationState,
+        startOptimization,
+        clearOptimization,
+        pendingApplication: applicationState,
+        applyRecommendation,
       }}
     >
       {children}

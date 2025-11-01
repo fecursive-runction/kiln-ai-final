@@ -1,13 +1,9 @@
 'use client';
 
-import { useActionState, useEffect } from 'react';
-import { useFormStatus } from 'react-dom';
-import { applyOptimization } from '@/app/actions';
+import { useData } from '@/context/DataProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import { useData } from '@/context/DataProvider';
 import {
   CheckCircle2,
   TrendingUp,
@@ -17,84 +13,19 @@ import {
   FileText,
   AlertTriangle,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-interface OptimizationRecommendation {
-  recommendationId: string;
-  timestamp: string;
-  feedRateSetpoint: number;
-  limestoneAdjustment: string;
-  clayAdjustment: string;
-  predictedLSF: number;
-  explanation: string;
-  originalMetrics: {
-    kilnTemperature: number;
-    feedRate: number;
-    lsf: number;
-    cao: number;
-    sio2: number;
-    al2o3: number;
-    fe2o3: number;
-  };
-}
+export function RecommendationCard() {
+  const { 
+    pendingOptimization, 
+    pendingApplication, 
+    applyRecommendation 
+  } = useData();
 
-interface RecommendationCardProps {
-  recommendation: OptimizationRecommendation | null;
-  isGenerating?: boolean;
-  progress?: number;
-  error?: string | null;
-}
-
-const initialApplyState = { success: false, message: '' };
-
-function ApplyButton() {
-  const { pending } = useFormStatus();
-
-  return (
-    <Button type="submit" disabled={pending} className="w-full" size="lg">
-      {pending ? (
-        <>
-          <span className="animate-spin">⚙️</span>
-          Applying...
-        </>
-      ) : (
-        <>
-          <CheckCircle2 className="w-4 h-4" />
-          Apply Recommendation
-        </>
-      )}
-    </Button>
-  );
-}
-
-export function RecommendationCard(props: RecommendationCardProps) {
-  const {
-    recommendation,
-    isGenerating = false,
-    progress = 0,
-    error = null,
-  } = props;
-  const [state, formAction] = useActionState(
-    applyOptimization,
-    initialApplyState
-  );
-  const { toast } = useToast();
-  const { refreshData } = useData();
-
-  useEffect(() => {
-    if (state.message) {
-      toast({
-        title: state.success ? 'Success' : 'Error',
-        description: state.message,
-        variant: state.success ? 'default' : 'destructive',
-      });
-
-      if (state.success) {
-        refreshData();
-      }
-    }
-  }, [state, toast, refreshData]);
+  const { isGenerating, progress, error, recommendation } = pendingOptimization;
+  const { isApplying, success } = pendingApplication;
 
   const getAdjustmentIcon = (adjustment: string) => {
     if (adjustment.startsWith('+')) {
@@ -112,7 +43,7 @@ export function RecommendationCard(props: RecommendationCardProps) {
     return 'bg-secondary border-border text-foreground';
   };
 
-  // Show progress bar and status if generating
+  // Show progress bar if generating
   if (isGenerating) {
     return (
       <Card className="border-primary/50">
@@ -126,24 +57,29 @@ export function RecommendationCard(props: RecommendationCardProps) {
                 {Math.round(progress)}%
               </span>
             </div>
-            <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
-              <div
-                className="h-full bg-primary transition-all duration-500 ease-out"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <div className="space-y-2 text-xs text-muted-foreground">
-              <p className="flex items-center gap-2">
-                <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-                Analyzing current plant composition
-              </p>
-              <p className="flex items-center gap-2">
-                <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-                Calculating optimal raw mix adjustments
-              </p>
-              <p className="flex items-center gap-2">
-                <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-                Generating AI recommendations
+            <div>
+              <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all duration-500 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <div className="space-y-2 text-xs text-muted-foreground">
+                <p className="flex items-center gap-2">
+                  <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                  Analyzing current plant composition
+                </p>
+                <p className="flex items-center gap-2">
+                  <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                  Calculating optimal raw mix adjustments
+                </p>
+                <p className="flex items-center gap-2">
+                  <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                  Generating AI recommendations
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                You can navigate to other pages - this will continue in the background
               </p>
             </div>
           </div>
@@ -152,6 +88,7 @@ export function RecommendationCard(props: RecommendationCardProps) {
     );
   }
 
+  // Show error if present
   if (error && !isGenerating) {
     return (
       <Card className="border-destructive/50 bg-destructive/5">
@@ -162,6 +99,7 @@ export function RecommendationCard(props: RecommendationCardProps) {
     );
   }
 
+  // Show placeholder if no recommendation
   if (!recommendation) {
     return (
       <div className="text-center space-y-4">
@@ -180,7 +118,7 @@ export function RecommendationCard(props: RecommendationCardProps) {
     );
   }
 
-  // ...existing code for showing recommendation...
+  // Show recommendation
   return (
     <motion.div
       initial={{ y: 20, opacity: 0 }}
@@ -284,52 +222,40 @@ export function RecommendationCard(props: RecommendationCardProps) {
             </CardContent>
           </Card>
 
-          <form action={formAction}>
-            <input
-              type="hidden"
-              name="predictedLSF"
-              value={recommendation.predictedLSF}
-            />
-            <input
-              type="hidden"
-              name="limestoneAdjustment"
-              value={recommendation.limestoneAdjustment}
-            />
-            <input
-              type="hidden"
-              name="clayAdjustment"
-              value={recommendation.clayAdjustment}
-            />
-            <input
-              type="hidden"
-              name="feedRateSetpoint"
-              value={recommendation.feedRateSetpoint}
-            />
-            <input type="hidden" name="kilnTemperature" value={recommendation.originalMetrics.kilnTemperature} />
-            <input type="hidden" name="feedRate" value={recommendation.originalMetrics.feedRate} />
-            <input type="hidden" name="lsf" value={recommendation.originalMetrics.lsf} />
-            <input type="hidden" name="cao" value={recommendation.originalMetrics.cao} />
-            <input type="hidden" name="sio2" value={recommendation.originalMetrics.sio2} />
-            <input type="hidden" name="al2o3" value={recommendation.originalMetrics.al2o3} />
-            <input type="hidden" name="fe2o3" value={recommendation.originalMetrics.fe2o3} />
-
-            {state.success ? (
-              <div className="flex items-center justify-center gap-2 p-4 bg-success/20 rounded-lg border border-success/50">
-                <CheckCircle2 className="w-5 h-5 text-success" />
-                <span className="font-bold font-mono text-success text-sm uppercase tracking-wider">
-                  Recommendation Applied Successfully!
-                </span>
-              </div>
-            ) : (
-              <ApplyButton />
-            )}
-          </form>
+          {success ? (
+            <div className="flex items-center justify-center gap-2 p-4 bg-success/20 rounded-lg border border-success/50">
+              <CheckCircle2 className="w-5 h-5 text-success" />
+              <span className="font-bold font-mono text-success text-sm uppercase tracking-wider">
+                Recommendation Applied Successfully! Data will reflect changes shortly.
+              </span>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              size="lg"
+              className="w-full font-mono"
+              disabled={isApplying}
+              onClick={() => applyRecommendation(recommendation)}
+            >
+              {isApplying ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Applying...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Apply Recommendation
+                </>
+              )}
+            </Button>
+          )}
 
           <div className="p-4 bg-warning/10 rounded-lg border border-warning/30 flex items-start gap-3">
             <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
             <p className="text-xs text-warning font-medium">
-              Applying this recommendation will create a new production metric
-              entry with the adjusted parameters. This action cannot be undone.
+              Applying this recommendation will influence future data generation to follow the optimized parameters. 
+              This action cannot be undone, but you can run optimization again anytime.
             </p>
           </div>
         </CardContent>

@@ -13,6 +13,8 @@ import {
 } from '@/lib/data/metrics';
 import { plantAgentFlow } from '@/ai/flows/plant-agent'; // ✅ updated import
 import { Action } from 'genkit';
+import { activateOptimizationTarget } from '@/app/api/ingest/route';
+
 
 export async function getLiveMetrics() {
   try {
@@ -211,60 +213,94 @@ export async function applyOptimization(prevState: any, formData: FormData) {
     fe2o3: parseFloat(formData.get('fe2o3') as string),
   };
 
-  const lsf = parseFloat(formData.get('predictedLSF') as string);
+  const predictedLSF = parseFloat(formData.get('predictedLSF') as string);
   const limestoneAdj = parseFloat((formData.get('limestoneAdjustment') as string).replace('%', ''));
   const clayAdj = parseFloat((formData.get('clayAdjustment') as string).replace('%', ''));
-
-  const newCao = originalMetrics.cao * (1 + limestoneAdj / 100);
-  const newSio2 = originalMetrics.sio2 * (1 - clayAdj / 200);
-  const newAl2o3 = originalMetrics.al2o3 * (1 - clayAdj / 200);
-
   const newFeedRate = parseFloat(formData.get('feedRateSetpoint') as string);
-  const newKilnTemp =
-    originalMetrics.kilnTemperature + (lsf > 98 ? -5 : lsf < 94 ? 5 : 0);
 
-  // Recalculate Bogue's phases based on new composition
-  const freeLime = 1.5;
-  const cao_prime = newCao - freeLime;
-  const newC3S = Math.max(
-    0,
-    4.071 * cao_prime -
-      7.602 * newSio2 -
-      6.719 * newAl2o3 -
-      1.43 * originalMetrics.fe2o3
-  );
-  const newC2S = Math.max(0, 2.867 * newSio2 - 0.754 * newC3S);
-  const newC3A = Math.max(0, 2.65 * newAl2o3 - 1.692 * originalMetrics.fe2o3);
-  const newC4AF = Math.max(0, 3.043 * originalMetrics.fe2o3);
+  try {
+    // Calculate immediate adjustments for the first data point
+    const limestoneAdjDecimal = limestoneAdj / 100;
+    const clayAdjDecimal = clayAdj / 100;
+    
+    // Apply first-step adjustments (10% of total adjustment immediately)
+    const initialConvergence = 0.10;
+    const newCao = originalMetrics.cao * (1 + limestoneAdjDecimal * initialConvergence);
+    const newSio2 = originalMetrics.sio2 * (1 - clayAdjDecimal * 0.5 * initialConvergence);
+    const newAl2o3 = originalMetrics.al2o3 * (1 - clayAdjDecimal * 0.5 * initialConvergence);
+    
+    // Slight kiln temp adjustment based on LSF direction
+    const lsfDiff = predictedLSF - originalMetrics.lsf;
+    const tempAdjustment = lsfDiff > 0 ? 2 : (lsfDiff < 0 ? -2 : 0);
+    const newKilnTemp = originalMetrics.kilnTemperature + tempAdjustment;
+    
+    // Feed rate takes immediate small step
+    const feedRateDiff = newFeedRate - originalMetrics.feedRate;
+    const adjustedFeedRate = originalMetrics.feedRate + feedRateDiff * 0.15;
+    
+    // Recalculate LSF from new composition
+    const denominator = 2.8 * newSio2 + 1.18 * newAl2o3 + 0.65 * originalMetrics.fe2o3;
+    const newLSF = denominator === 0 ? originalMetrics.lsf : (newCao / denominator) * 100;
+    
+    // Recalculate Bogue's phases
+    const cao_prime = Math.max(0, newCao - 1.5);
+    const c4af = 3.043 * originalMetrics.fe2o3;
+    const c3a = 2.650 * newAl2o3 - 1.692 * originalMetrics.fe2o3;
+    const c3s = 4.071 * cao_prime - 7.602 * newSio2 - 6.719 * newAl2o3 - 1.430 * originalMetrics.fe2o3;
+    const c2s = 2.867 * newSio2 - 0.754 * c3s;
+    
+    // Create the immediate optimized metric
+    const optimizedMetric = {
+      timestamp: new Date().toISOString(),
+      plant_id: 'poc_plant_01',
+      kiln_temp: parseFloat(newKilnTemp.toFixed(2)),
+      feed_rate: parseFloat(adjustedFeedRate.toFixed(2)),
+      lsf: parseFloat(newLSF.toFixed(1)),
+      cao: parseFloat(newCao.toFixed(2)),
+      sio2: parseFloat(newSio2.toFixed(2)),
+      al2o3: parseFloat(newAl2o3.toFixed(2)),
+      fe2o3: parseFloat(originalMetrics.fe2o3.toFixed(2)),
+      c3s: parseFloat(Math.max(0, c3s).toFixed(2)),
+      c2s: parseFloat(Math.max(0, c2s).toFixed(2)),
+      c3a: parseFloat(Math.max(0, c3a).toFixed(2)),
+      c4af: parseFloat(Math.max(0, c4af).toFixed(2)),
+    };
 
-  const payload = {
-    timestamp: new Date().toISOString(),
-    plant_id: 'poc_plant_01',
-    kiln_temp: parseFloat(newKilnTemp.toFixed(2)),
-    feed_rate: parseFloat(newFeedRate.toFixed(2)),
-    lsf: parseFloat(lsf.toFixed(1)),
-    cao: parseFloat(newCao.toFixed(2)),
-    sio2: parseFloat(newSio2.toFixed(2)),
-    al2o3: parseFloat(newAl2o3.toFixed(2)),
-    fe2o3: parseFloat(originalMetrics.fe2o3.toFixed(2)),
-    c3s: parseFloat(newC3S.toFixed(2)),
-    c2s: parseFloat(newC2S.toFixed(2)),
-    c3a: parseFloat(newC3A.toFixed(2)),
-    c4af: parseFloat(newC4AF.toFixed(2)),
-  };
-
-  // ✅ FIX: Fire-and-forget - don't await the database call
-  insertMetric(payload as any)
-    .then(() => {
-      console.log('Applied optimization: metric inserted (async)');
-    })
-    .catch((err: any) => {
-      console.error('Failed to insert metric (async):', err);
+    // Insert the immediate optimized metric
+    await insertMetric(optimizedMetric as any);
+    
+    console.log('[APPLY] Immediate optimized metric inserted:', {
+      lsf: newLSF.toFixed(1),
+      cao: newCao.toFixed(2),
+      sio2: newSio2.toFixed(2),
+      feedRate: adjustedFeedRate.toFixed(1)
     });
+    
+    // Activate optimization target for continued convergence
+    activateOptimizationTarget(
+      predictedLSF,
+      newFeedRate,
+      limestoneAdjDecimal,
+      clayAdjDecimal
+    );
 
-  // ✅ Return immediately - don't wait for DB
-  return { success: true, message: 'Optimization applied successfully!' };
+    console.log('[APPLY] Optimization target activated for continued convergence');
+    console.log(`[APPLY] Target LSF: ${predictedLSF.toFixed(1)}%, Current LSF: ${newLSF.toFixed(1)}%`);
+    console.log(`[APPLY] Limestone adj: ${limestoneAdj}%, Clay adj: ${clayAdj}%`);
+
+    return { 
+      success: true, 
+      message: 'Optimization applied! Data has been updated and will continue converging to target parameters.' 
+    };
+  } catch (error: any) {
+    console.error('Failed to apply optimization:', error);
+return {
+  success: false,
+  message: `Failed to apply optimization: ${error?.message ?? String(error)}`
+};
+  }
 }
+
 
 export async function askPlantGuardian(
   chatHistory: Array<{ role: 'user' | 'assistant'; content: string }>
