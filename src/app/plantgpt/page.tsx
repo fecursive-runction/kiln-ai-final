@@ -22,14 +22,14 @@ const renderMarkdown = (text: string) => {
   return paragraphs.map((paragraph, pIdx) => {
     // Check if it's a list
     const lines = paragraph.split('\n');
-    const isList = lines.every(line => line.trim().startsWith('-') || line.trim().startsWith('*') || line.trim() === '');
+    const isList = lines.some(line => /^[\s]*[-*]\s+/.test(line));
     
-    if (isList && lines.length > 1) {
+    if (isList) {
       return (
         <ul key={pIdx} className="list-disc list-inside space-y-1 my-2">
           {lines.filter(line => line.trim()).map((line, lIdx) => (
             <li key={lIdx} className="ml-2">
-              {formatInlineMarkdown(line.replace(/^[-*]\s*/, ''))}
+              {formatInlineMarkdown(line.replace(/^[\s]*[-*]\s+/, ''))}
             </li>
           ))}
         </ul>
@@ -48,59 +48,65 @@ const renderMarkdown = (text: string) => {
 // Format inline markdown (bold, italic, code)
 const formatInlineMarkdown = (text: string) => {
   const parts: (string | JSX.Element)[] = [];
-  let currentIndex = 0;
+  let remaining = text;
   let key = 0;
 
-  // Regex patterns for markdown
-  const patterns = [
-    { regex: /\*\*(.+?)\*\*/g, tag: 'strong', className: 'font-bold' },
-    { regex: /\*(.+?)\*/g, tag: 'em', className: 'italic' },
-    { regex: /`(.+?)`/g, tag: 'code', className: 'bg-secondary px-1 py-0.5 rounded text-xs font-mono' },
-  ];
-
-  // Find all matches
-  const allMatches: Array<{ index: number; length: number; content: string; pattern: typeof patterns[0] }> = [];
-  
-  patterns.forEach(pattern => {
-    let match;
-    const regex = new RegExp(pattern.regex.source, 'g');
-    while ((match = regex.exec(text)) !== null) {
-      allMatches.push({
-        index: match.index,
-        length: match[0].length,
-        content: match[1],
-        pattern
-      });
-    }
-  });
-
-  // Sort matches by index
-  allMatches.sort((a, b) => a.index - b.index);
-
-  // Build the formatted text
-  allMatches.forEach(match => {
-    // Add text before match
-    if (currentIndex < match.index) {
-      parts.push(text.substring(currentIndex, match.index));
+  while (remaining.length > 0) {
+    // Try to match bold first (**text**)
+    const boldMatch = remaining.match(/^\*\*(.+?)\*\*/);
+    if (boldMatch) {
+      parts.push(
+        <strong key={key++} className="font-bold">
+          {boldMatch[1]}
+        </strong>
+      );
+      remaining = remaining.slice(boldMatch[0].length);
+      continue;
     }
 
-    // Add formatted match
-    const Tag = match.pattern.tag as keyof JSX.IntrinsicElements;
-    parts.push(
-      <Tag key={key++} className={match.pattern.className}>
-        {match.content}
-      </Tag>
-    );
+    // Try to match italic (*text* but not **)
+    const italicMatch = remaining.match(/^\*([^*]+?)\*/);
+    if (italicMatch) {
+      parts.push(
+        <em key={key++} className="italic">
+          {italicMatch[1]}
+        </em>
+      );
+      remaining = remaining.slice(italicMatch[0].length);
+      continue;
+    }
 
-    currentIndex = match.index + match.length;
-  });
+    // Try to match code (`text`)
+    const codeMatch = remaining.match(/^`(.+?)`/);
+    if (codeMatch) {
+      parts.push(
+        <code key={key++} className="bg-secondary px-1 py-0.5 rounded text-xs font-mono">
+          {codeMatch[1]}
+        </code>
+      );
+      remaining = remaining.slice(codeMatch[0].length);
+      continue;
+    }
 
-  // Add remaining text
-  if (currentIndex < text.length) {
-    parts.push(text.substring(currentIndex));
+    // No match found, add the next character as plain text
+    // Look ahead to find the next markdown character
+    const nextSpecialChar = remaining.search(/[*`]/);
+    if (nextSpecialChar === -1) {
+      // No more markdown, add rest as plain text
+      parts.push(remaining);
+      break;
+    } else if (nextSpecialChar === 0) {
+      // Markdown character but didn't match pattern, add it as plain text
+      parts.push(remaining[0]);
+      remaining = remaining.slice(1);
+    } else {
+      // Add text up to next markdown character
+      parts.push(remaining.slice(0, nextSpecialChar));
+      remaining = remaining.slice(nextSpecialChar);
+    }
   }
 
-  return parts.length > 0 ? parts : text;
+  return parts.length > 0 ? <>{parts}</> : text;
 };
 
 // Storage key for persisting chat history
