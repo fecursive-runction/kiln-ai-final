@@ -20,67 +20,87 @@ const renderMarkdown = (text: string) => {
   const paragraphs = text.split('\n\n');
   
   return paragraphs.map((paragraph, pIdx) => {
-    // Check if it's a list
+    // Check if it's a numbered list
     const lines = paragraph.split('\n');
-    const isList = lines.some(line => /^[\s]*[-*]\s+/.test(line));
+    const isNumberedList = lines.some(line => /^[\s]*\d+\.\s+/.test(line));
+    const isBulletList = lines.some(line => /^[\s]*[-*]\s+/.test(line));
     
-    if (isList) {
+    if (isNumberedList) {
       return (
-        <ul key={pIdx} className="list-disc list-inside space-y-1 my-2">
-          {lines.filter(line => line.trim()).map((line, lIdx) => (
-            <li key={lIdx} className="ml-2">
-              {formatInlineMarkdown(line.replace(/^[\s]*[-*]\s+/, ''))}
-            </li>
-          ))}
+        <ol key={pIdx} className="list-decimal list-inside space-y-2 my-3 ml-4">
+          {lines.filter(line => line.trim()).map((line, lIdx) => {
+            const cleanedLine = line.replace(/^[\s]*\d+\.\s+/, '');
+            return (
+              <li key={lIdx} className="leading-relaxed">
+                <span className="ml-2">{formatInlineMarkdown(cleanedLine)}</span>
+              </li>
+            );
+          })}
+        </ol>
+      );
+    }
+    
+    if (isBulletList) {
+      return (
+        <ul key={pIdx} className="list-disc list-inside space-y-2 my-3 ml-4">
+          {lines.filter(line => line.trim()).map((line, lIdx) => {
+            const cleanedLine = line.replace(/^[\s]*[-*]\s+/, '');
+            return (
+              <li key={lIdx} className="leading-relaxed">
+                <span className="ml-2">{formatInlineMarkdown(cleanedLine)}</span>
+              </li>
+            );
+          })}
         </ul>
       );
     }
     
+    // Check if it's a header (starts with #)
+    if (paragraph.trim().startsWith('#')) {
+      const headerMatch = paragraph.match(/^(#{1,6})\s+(.+)$/);
+      if (headerMatch) {
+        const level = headerMatch[1].length;
+        const text = headerMatch[2];
+        const HeadingTag = `h${Math.min(level + 2, 6)}` as keyof JSX.IntrinsicElements;
+        const sizeClass = level === 1 ? 'text-lg' : level === 2 ? 'text-base' : 'text-sm';
+        return (
+          <HeadingTag key={pIdx} className={`${sizeClass} font-bold my-3`}>
+            {formatInlineMarkdown(text)}
+          </HeadingTag>
+        );
+      }
+    }
+    
     // Regular paragraph
     return (
-      <p key={pIdx} className="my-2">
+      <p key={pIdx} className="my-2 leading-relaxed">
         {formatInlineMarkdown(paragraph)}
       </p>
     );
   });
 };
 
-// Format inline markdown (bold, italic, code)
+// Format inline markdown (bold, italic, code) - strip all markdown
 const formatInlineMarkdown = (text: string) => {
+  // Remove all bold markers (**text** or __text__)
+  let processed = text.replace(/\*\*(.+?)\*\*/g, '$1');
+  processed = processed.replace(/__(.+?)__/g, '$1');
+  
+  // Remove all italic markers (*text* or _text_)
+  processed = processed.replace(/\*([^*]+?)\*/g, '$1');
+  processed = processed.replace(/_([^_]+?)_/g, '$1');
+  
+  // Keep code blocks but style them
   const parts: (string | JSX.Element)[] = [];
-  let remaining = text;
+  let remaining = processed;
   let key = 0;
 
   while (remaining.length > 0) {
-    // Try to match bold first (**text**)
-    const boldMatch = remaining.match(/^\*\*(.+?)\*\*/);
-    if (boldMatch) {
-      parts.push(
-        <strong key={key++} className="font-bold">
-          {boldMatch[1]}
-        </strong>
-      );
-      remaining = remaining.slice(boldMatch[0].length);
-      continue;
-    }
-
-    // Try to match italic (*text* but not **)
-    const italicMatch = remaining.match(/^\*([^*]+?)\*/);
-    if (italicMatch) {
-      parts.push(
-        <em key={key++} className="italic">
-          {italicMatch[1]}
-        </em>
-      );
-      remaining = remaining.slice(italicMatch[0].length);
-      continue;
-    }
-
     // Try to match code (`text`)
     const codeMatch = remaining.match(/^`(.+?)`/);
     if (codeMatch) {
       parts.push(
-        <code key={key++} className="bg-secondary px-1 py-0.5 rounded text-xs font-mono">
+        <code key={key++} className="bg-secondary px-1.5 py-0.5 rounded text-xs font-mono">
           {codeMatch[1]}
         </code>
       );
@@ -88,25 +108,24 @@ const formatInlineMarkdown = (text: string) => {
       continue;
     }
 
-    // No match found, add the next character as plain text
-    // Look ahead to find the next markdown character
-    const nextSpecialChar = remaining.search(/[*`]/);
-    if (nextSpecialChar === -1) {
-      // No more markdown, add rest as plain text
+    // Find next backtick
+    const nextBacktick = remaining.indexOf('`');
+    if (nextBacktick === -1) {
+      // No more code blocks, add rest as plain text
       parts.push(remaining);
       break;
-    } else if (nextSpecialChar === 0) {
-      // Markdown character but didn't match pattern, add it as plain text
+    } else if (nextBacktick === 0) {
+      // Backtick at start but didn't match pattern, add it as plain text
       parts.push(remaining[0]);
       remaining = remaining.slice(1);
     } else {
-      // Add text up to next markdown character
-      parts.push(remaining.slice(0, nextSpecialChar));
-      remaining = remaining.slice(nextSpecialChar);
+      // Add text up to next backtick
+      parts.push(remaining.slice(0, nextBacktick));
+      remaining = remaining.slice(nextBacktick);
     }
   }
 
-  return parts.length > 0 ? <>{parts}</> : text;
+  return parts.length > 0 ? <>{parts}</> : processed;
 };
 
 // Storage key for persisting chat history
