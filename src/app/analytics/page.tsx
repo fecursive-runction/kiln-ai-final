@@ -30,98 +30,90 @@ export default function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState('tab1');
 
   const [chartData, setChartData] = useState<any[]>([]);
-
-  const lastTimestampRef = useRef<string | null>(null);
+  const lastProcessedIdRef = useRef<number |string| null>(null);
   const chartInitializedRef = useRef(false);
-  // FIX: Add throttle to prevent rapid updates
-  const updateThrottleRef = useRef<NodeJS.Timeout | null>(null);
 
-  // FIX: Throttled chart update to prevent race conditions
+  // Initialize and update chart data
   useEffect(() => {
     if (!metricsHistory || metricsHistory.length === 0) return;
 
+    // Get the newest metric
     const newest = metricsHistory[metricsHistory.length - 1];
-    const newestTs = String(newest.timestamp);
+    const newestId = newest.id || newest.timestamp;
 
-    if (lastTimestampRef.current === newestTs) return;
+    // Skip if we've already processed this data point
+    if (lastProcessedIdRef.current === newestId) return;
 
-    // Clear existing throttle
-    if (updateThrottleRef.current) {
-      clearTimeout(updateThrottleRef.current);
-    }
-
-    // Throttle updates to prevent race conditions during rapid data changes
-    updateThrottleRef.current = setTimeout(() => {
-      const point = {
-        time: new Date(newest.timestamp).toLocaleTimeString('en-US', {
+    // Initial load: populate with last 50 points
+    if (!chartInitializedRef.current) {
+      chartInitializedRef.current = true;
+      
+      const sortedMetrics = [...metricsHistory]
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+        .slice(-MAX_POINTS);
+      
+      const initial = sortedMetrics.map((metric) => ({
+        time: new Date(metric.timestamp).toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit',
           hour12: false,
         }),
-        index: metricsHistory.length - 1,
-        kilnTemp: newest.kiln_temp,
-        feedRate: newest.feed_rate,
-        lsf: newest.lsf,
-        cao: newest.cao,
-        sio2: newest.sio2,
-        al2o3: newest.al2o3,
-        fe2o3: newest.fe2o3,
-        c3s: newest.c3s,
-        c2s: newest.c2s,
-        c3a: newest.c3a,
-        c4af: newest.c4af,
-      };
+        timestamp: new Date(metric.timestamp).getTime(),
+        kilnTemp: metric.kiln_temp,
+        feedRate: metric.feed_rate,
+        lsf: metric.lsf,
+        cao: metric.cao,
+        sio2: metric.sio2,
+        al2o3: metric.al2o3,
+        fe2o3: metric.fe2o3,
+        c3s: metric.c3s,
+        c2s: metric.c2s,
+        c3a: metric.c3a,
+        c4af: metric.c4af,
+      }));
+      
+      setChartData(initial);
+      lastProcessedIdRef.current = newestId;
+      return;
+    }
 
-      setChartData((prev) => {
-        if (!chartInitializedRef.current && prev.length === 0) {
-          chartInitializedRef.current = true;
-          // Sort metrics by timestamp before mapping
-          const sortedMetrics = [...metricsHistory]
-            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-            .slice(-MAX_POINTS);
-          
-          const initial = sortedMetrics.map((metric, idx) => ({
-            time: new Date(metric.timestamp).toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false,
-            }),
-            index: idx,
-            kilnTemp: metric.kiln_temp,
-            feedRate: metric.feed_rate,
-            lsf: metric.lsf,
-            cao: metric.cao,
-            sio2: metric.sio2,
-            al2o3: metric.al2o3,
-            fe2o3: metric.fe2o3,
-            c3s: metric.c3s,
-            c2s: metric.c2s,
-            c3a: metric.c3a,
-            c4af: metric.c4af,
-          }));
-          return initial;
-        }
-
-        // Add new point and ensure chronological order
-        const next = [...prev, point]
-          .sort((a, b) => {
-            const timeA = new Date(`1970/01/01 ${a.time}`).getTime();
-            const timeB = new Date(`1970/01/01 ${b.time}`).getTime();
-            return timeA - timeB;
-          })
-          .slice(-MAX_POINTS);
-        return next;
-      });
-
-      lastTimestampRef.current = newestTs;
-    }, 100); // 100ms throttle
-
-    return () => {
-      if (updateThrottleRef.current) {
-        clearTimeout(updateThrottleRef.current);
-      }
+    // Add new point to the end (left-to-right flow)
+    const newPoint = {
+      time: new Date(newest.timestamp).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }),
+      timestamp: new Date(newest.timestamp).getTime(),
+      kilnTemp: newest.kiln_temp,
+      feedRate: newest.feed_rate,
+      lsf: newest.lsf,
+      cao: newest.cao,
+      sio2: newest.sio2,
+      al2o3: newest.al2o3,
+      fe2o3: newest.fe2o3,
+      c3s: newest.c3s,
+      c2s: newest.c2s,
+      c3a: newest.c3a,
+      c4af: newest.c4af,
     };
+
+    setChartData((prev) => {
+      // Append to end and keep only last MAX_POINTS
+      const updated = [...prev, newPoint].slice(-MAX_POINTS);
+      return updated;
+    });
+
+    lastProcessedIdRef.current = newestId;
   }, [metricsHistory]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      chartInitializedRef.current = false;
+      lastProcessedIdRef.current = null;
+    };
+  }, []);
 
   if (loading) {
     return (
