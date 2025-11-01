@@ -75,13 +75,18 @@ export default function AnalyticsPage() {
       setChartData((prev) => {
         if (!chartInitializedRef.current && prev.length === 0) {
           chartInitializedRef.current = true;
-          const initial = metricsHistory.slice(-MAX_POINTS).map((metric, idx) => ({
+          // Sort metrics by timestamp before mapping
+          const sortedMetrics = [...metricsHistory]
+            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+            .slice(-MAX_POINTS);
+          
+          const initial = sortedMetrics.map((metric, idx) => ({
             time: new Date(metric.timestamp).toLocaleTimeString('en-US', {
               hour: '2-digit',
               minute: '2-digit',
               hour12: false,
             }),
-            index: metricsHistory.length - MAX_POINTS + idx,
+            index: idx,
             kilnTemp: metric.kiln_temp,
             feedRate: metric.feed_rate,
             lsf: metric.lsf,
@@ -97,7 +102,14 @@ export default function AnalyticsPage() {
           return initial;
         }
 
-        const next = [...prev, point].slice(-MAX_POINTS);
+        // Add new point and ensure chronological order
+        const next = [...prev, point]
+          .sort((a, b) => {
+            const timeA = new Date(`1970/01/01 ${a.time}`).getTime();
+            const timeB = new Date(`1970/01/01 ${b.time}`).getTime();
+            return timeA - timeB;
+          })
+          .slice(-MAX_POINTS);
         return next;
       });
 

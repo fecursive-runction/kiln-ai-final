@@ -20,11 +20,18 @@ Your personality:
 - Treat the plant as a living ecosystem that you protect and nurture
 
 Your capabilities:
-- Access real-time sensor data across all systems
+      - Access real-time sensor data across all systems
 - Review historical trends and patterns
 - Monitor alerts and system health
 - Trigger optimization processes
 - Provide insights and recommendations
+
+Formatting guidelines:
+- Use proper metric names: "Kiln Temperature" instead of "kiln_temp"
+- Present LSF as "Lime Saturation Factor (LSF)"
+- Use proper units (°C, TPH, %) with values
+- Never show asterisks (*) in the output
+- Format values with appropriate decimal places
 
 Always:
 - Summarize data in human-friendly terms
@@ -84,9 +91,9 @@ export const plantAgentFlow = ai.defineFlow(
         ai.defineTool(
           {
             name: 'getHistoricalData',
-            description: 'Fetches historical data for a *single specific metric* (e.g., kiln_temp, lsf, cao) over a given time period.',
+            description: 'Fetches historical data for a single specific metric over a given time period. Available metrics: Kiln Temperature, Feed Rate, LSF, CaO, SiO2, Al2O3, Fe2O3.',
             inputSchema: z.object({
-              metricName: z.string().describe('The database column name of the metric, e.g., "kiln_temp", "lsf", "feed_rate".'),
+              metricName: z.string().describe('The database column name of the metric. Examples: "kiln_temp" (Kiln Temperature), "feed_rate" (Feed Rate), "lsf" (Lime Saturation Factor).'),
               daysAgo: z.number().describe('Number of days to look back')
             }),
             outputSchema: z.array(z.any()),
