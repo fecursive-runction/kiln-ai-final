@@ -5,7 +5,7 @@
  * * - optimizeCementProduction - A function that handles the cement production optimization process.
  */
 
-import {ai} from '@/ai/genkit';
+import {optimizerAI as ai} from '@/ai/genkit';
 // *** MODIFIED ***
 // Import schemas and types from the new non-server file
 import { 
@@ -18,7 +18,7 @@ import {
 
 export async function optimizeCementProduction(input: OptimizeCementProductionInput): Promise<AIGenerationOutput> {
   const { output } = await ai.generate({
-    model: 'googleai/gemini-2.5-flash',
+    model: 'googleai/gemini-2.5-pro',
     prompt: `You are an expert AI process engineer for a cement plant. Your task is to provide optimal operational setpoints AND an explanation based on real-time data. The primary goal is to bring the Lime Saturation Factor (LSF) into the ideal range of 94-98%.
 
     Current Plant State (Plant ID: ${input.plantId}):

@@ -159,10 +159,10 @@ export function MetricsDataTable({ data }: MetricsDataTableProps) {
     <div className="space-y-4">
       <Card className="p-4">
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-          
+
           {/* MODIFICATION: Grouping div now has `md:flex-1` to take up space */}
           <div className="flex flex-col md:flex-row md:items-center gap-4 w-full md:flex-1">
-            
+
             {/* MODIFICATION: Removed `md:max-w-sm` to allow search bar to grow */}
             <div className="flex-1 w-full">
               <div className="relative">
@@ -256,17 +256,21 @@ export function MetricsDataTable({ data }: MetricsDataTableProps) {
                   </TableCell>
                 </TableRow>
               ) : (
-                processedData.map((metric) => {
+                processedData.map((metric, idx) => {
                   const tempStatus = getTemperatureStatus(metric.kiln_temp);
                   const lsfBadge = getLSFBadgeVariant(metric.lsf);
 
-                  // Ensure a stable, unique key for each row. Prefer an explicit id
-                  // if present; otherwise fall back to timestamp+plant_id which
-                  // should be unique enough for this dataset.
-                  const rowKey = (metric as any).id ?? `${metric.timestamp}-${metric.plant_id}`;
+                  // FIX: Use a more stable key combining index and timestamp
+                  // This prevents issues when multiple records have the same timestamp
+                  const rowKey = metric.id
+                    ? String(metric.id)
+                    : `${metric.timestamp}-${metric.plant_id}-${idx}`;
 
                   return (
-                    <TableRow key={rowKey} className="hover:bg-secondary/50 transition-colors border-b border-border/50">
+                    <TableRow
+                      key={rowKey}
+                      className="hover:bg-secondary/50 transition-colors border-b border-border/50"
+                    >
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {formatTimestamp(metric.timestamp)}
                       </TableCell>

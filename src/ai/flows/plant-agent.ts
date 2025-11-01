@@ -1,8 +1,8 @@
 //
-// FILE: src/ai/flows/plant-agent.ts (Corrected)
+// FILE: src/ai/flows/plant-agent.ts (FIXED)
 //
 
-import { ai } from '../genkit'; // CITE: fecursive-runction/kiln-ai-final/kiln-ai-final-6c4ad047dd097f90294ec7a1e57cada0dae72532/src/ai/genkit.ts
+import { plantGPTAI as ai } from '../genkit';
 import {
   getLiveMetrics,
   getRecentAlerts,
@@ -85,14 +85,12 @@ export const plantAgentFlow = ai.defineFlow(
           {
             name: 'getHistoricalData',
             description: 'Fetches historical data for a *single specific metric* (e.g., kiln_temp, lsf, cao) over a given time period.',
-            // FIX: Change 'sensorId' to 'metricName'
             inputSchema: z.object({
               metricName: z.string().describe('The database column name of the metric, e.g., "kiln_temp", "lsf", "feed_rate".'),
               daysAgo: z.number().describe('Number of days to look back')
             }),
             outputSchema: z.array(z.any()),
           },
-          // FIX: Pass the new parameters
           async ({ metricName, daysAgo }) => await getHistoricalData(metricName, daysAgo)
         ),
         ai.defineTool(
@@ -112,6 +110,8 @@ export const plantAgentFlow = ai.defineFlow(
       ],
     });
 
-    return llmResponse.text; // FIX: Reverted to .text (as a property), which is correct for your setup.
+    // FIX: Access the text content correctly
+    // The generate response has a text property that's a string, not a method
+    return llmResponse.text || '';
   }
 );

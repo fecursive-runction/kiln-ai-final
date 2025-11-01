@@ -12,7 +12,7 @@ import { getLiveMetrics, getAiAlerts, getMetricsHistory } from '@/app/actions';
 import { toast } from '@/hooks/use-toast';
 import { formatChartTime } from '@/lib/formatters';
 
-// Type definitions based on API contract
+// Type definitions
 export interface LiveMetrics {
   kilnTemperature: number;
   feedRate: number;
@@ -86,7 +86,6 @@ interface DataContextValue {
   stopPlant: () => void;
   emergencyStop: () => void;
   
-  // Optimization state
   pendingOptimization: {
     isGenerating: boolean;
     progress: number;
@@ -94,11 +93,9 @@ interface DataContextValue {
     recommendation: OptimizationRecommendation | null;
   };
   
-  // Optimization actions
   startOptimization: (formData: FormData) => Promise<void>;
   clearOptimization: () => void;
   
-  // Application state
   pendingApplication: {
     isApplying: boolean;
     success: boolean;
@@ -154,7 +151,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [plantRunning, setPlantRunning] = useState(true);
   const ingestRef = useRef<any>(0);
 
-  // Optimization state
   const [optimizationState, setOptimizationState] = useState({
     isGenerating: false,
     progress: 0,
@@ -162,18 +158,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     recommendation: null as OptimizationRecommendation | null,
   });
 
-  // Application state
   const [applicationState, setApplicationState] = useState({
     isApplying: false,
     success: false,
     message: '',
   });
 
-  // Track active optimization promise
   const optimizationPromiseRef = useRef<Promise<any> | null>(null);
   const progressIntervalRef = useRef<any>(null);
 
-  // Data fetching function
   const fetchData = async () => {
     try {
       const [metrics, aiAlerts, history] = await Promise.all([
@@ -201,9 +194,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Start optimization (persistent across navigation)
   const startOptimization = async (formData: FormData) => {
-    // If already generating, ignore
     if (optimizationState.isGenerating) {
       toast({
         title: 'Optimization in progress',
@@ -213,7 +204,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Reset state
+    // FIX: Reset application state when starting new optimization
+    setApplicationState({
+      isApplying: false,
+      success: false,
+      message: '',
+    });
+
     setOptimizationState({
       isGenerating: true,
       progress: 0,
@@ -221,7 +218,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       recommendation: null,
     });
 
-    // Start progress simulation
     progressIntervalRef.current = setInterval(() => {
       setOptimizationState(prev => ({
         ...prev,
@@ -234,17 +230,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       description: 'This may take 10-15 seconds. Feel free to navigate away.',
     });
 
-    // Import the action dynamically to avoid circular deps
     const { runOptimization } = await import('@/app/actions');
-
-    // Start the optimization (non-blocking)
     const promise = runOptimization({ error: null, recommendation: null }, formData);
     optimizationPromiseRef.current = promise;
 
     try {
       const result = await promise;
 
-      // Clear progress interval
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current);
         progressIntervalRef.current = null;
@@ -297,7 +289,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Clear optimization state
   const clearOptimization = () => {
     setOptimizationState({
       isGenerating: false,
@@ -305,13 +296,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
       error: null,
       recommendation: null,
     });
+    // FIX: Also clear application state
+    setApplicationState({
+      isApplying: false,
+      success: false,
+      message: '',
+    });
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
       progressIntervalRef.current = null;
     }
   };
 
-  // Apply recommendation (persistent across navigation)
   const applyRecommendation = async (recommendation: OptimizationRecommendation) => {
     if (applicationState.isApplying) {
       toast({
@@ -334,10 +330,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     });
 
     try {
-      // Import action
       const { applyOptimization } = await import('@/app/actions');
 
-      // Create FormData
       const formData = new FormData();
       formData.append('predictedLSF', recommendation.predictedLSF.toString());
       formData.append('limestoneAdjustment', recommendation.limestoneAdjustment);
@@ -365,7 +359,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
           description: 'Plant parameters updated successfully. Data will reflect changes shortly.',
         });
         
-        // Refresh data after short delay
         setTimeout(() => {
           fetchData();
         }, 2000);

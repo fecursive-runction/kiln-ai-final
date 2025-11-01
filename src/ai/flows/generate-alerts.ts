@@ -9,7 +9,7 @@
  * - GenerateAlertsOutput - The return type for the generateAlerts function.
  */
 
-import { ai } from '@/ai/genkit';
+import { alertsAI as ai } from '@/ai/genkit';
 import { z } from 'zod';
 
 const GenerateAlertsInputSchema = z.object({
@@ -33,7 +33,7 @@ export type GenerateAlertsOutput = z.infer<typeof GenerateAlertsOutputSchema>;
 export async function generateAlerts(input: GenerateAlertsInput): Promise<GenerateAlertsOutput> {
   try {
     const { output } = await ai.generate({
-      model: 'googleai/gemini-2.5-pro',
+      model: 'googleai/gemini-2.5-flash-lite',
       prompt: `You are an AI monitoring system for a cement plant. Your task is to generate alerts based on the following live data.
     
       Current Plant State:

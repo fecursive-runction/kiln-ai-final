@@ -1,4 +1,4 @@
-// src/app/analytics/page.tsx
+// src/app/analytics/page.tsx (FIXED)
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '@/context/DataProvider';
@@ -29,75 +29,86 @@ export default function AnalyticsPage() {
   const { liveMetrics, metricsHistory, loading } = useData();
   const [activeTab, setActiveTab] = useState('tab1');
 
-  // Local chart state that we append to (so the chart doesn't 'blank' on each refresh)
   const [chartData, setChartData] = useState<any[]>([]);
 
   const lastTimestampRef = useRef<string | null>(null);
   const chartInitializedRef = useRef(false);
+  // FIX: Add throttle to prevent rapid updates
+  const updateThrottleRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Append-only update: when metricsHistory updates, append only new points
+  // FIX: Throttled chart update to prevent race conditions
   useEffect(() => {
     if (!metricsHistory || metricsHistory.length === 0) return;
 
     const newest = metricsHistory[metricsHistory.length - 1];
     const newestTs = String(newest.timestamp);
 
-    // If we already processed this timestamp, do nothing
     if (lastTimestampRef.current === newestTs) return;
 
-    // Build a point from the newest metric
-    const point = {
-      time: new Date(newest.timestamp).toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      }),
-      index: metricsHistory.length - 1, // Use index for stable ordering
-      kilnTemp: newest.kiln_temp,
-      feedRate: newest.feed_rate,
-      lsf: newest.lsf,
-      cao: newest.cao,
-      sio2: newest.sio2,
-      al2o3: newest.al2o3,
-      fe2o3: newest.fe2o3,
-      c3s: newest.c3s,
-      c2s: newest.c2s,
-      c3a: newest.c3a,
-      c4af: newest.c4af,
-    };
+    // Clear existing throttle
+    if (updateThrottleRef.current) {
+      clearTimeout(updateThrottleRef.current);
+    }
 
-    setChartData((prev) => {
-      // If this is initial load and we have no data, populate with history
-      if (!chartInitializedRef.current && prev.length === 0) {
-        chartInitializedRef.current = true;
-        const initial = metricsHistory.slice(-MAX_POINTS).map((metric, idx) => ({
-          time: new Date(metric.timestamp).toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          }),
-          index: metricsHistory.length - MAX_POINTS + idx,
-          kilnTemp: metric.kiln_temp,
-          feedRate: metric.feed_rate,
-          lsf: metric.lsf,
-          cao: metric.cao,
-          sio2: metric.sio2,
-          al2o3: metric.al2o3,
-          fe2o3: metric.fe2o3,
-          c3s: metric.c3s,
-          c2s: metric.c2s,
-          c3a: metric.c3a,
-          c4af: metric.c4af,
-        }));
-        return initial;
+    // Throttle updates to prevent race conditions during rapid data changes
+    updateThrottleRef.current = setTimeout(() => {
+      const point = {
+        time: new Date(newest.timestamp).toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }),
+        index: metricsHistory.length - 1,
+        kilnTemp: newest.kiln_temp,
+        feedRate: newest.feed_rate,
+        lsf: newest.lsf,
+        cao: newest.cao,
+        sio2: newest.sio2,
+        al2o3: newest.al2o3,
+        fe2o3: newest.fe2o3,
+        c3s: newest.c3s,
+        c2s: newest.c2s,
+        c3a: newest.c3a,
+        c4af: newest.c4af,
+      };
+
+      setChartData((prev) => {
+        if (!chartInitializedRef.current && prev.length === 0) {
+          chartInitializedRef.current = true;
+          const initial = metricsHistory.slice(-MAX_POINTS).map((metric, idx) => ({
+            time: new Date(metric.timestamp).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            }),
+            index: metricsHistory.length - MAX_POINTS + idx,
+            kilnTemp: metric.kiln_temp,
+            feedRate: metric.feed_rate,
+            lsf: metric.lsf,
+            cao: metric.cao,
+            sio2: metric.sio2,
+            al2o3: metric.al2o3,
+            fe2o3: metric.fe2o3,
+            c3s: metric.c3s,
+            c2s: metric.c2s,
+            c3a: metric.c3a,
+            c4af: metric.c4af,
+          }));
+          return initial;
+        }
+
+        const next = [...prev, point].slice(-MAX_POINTS);
+        return next;
+      });
+
+      lastTimestampRef.current = newestTs;
+    }, 100); // 100ms throttle
+
+    return () => {
+      if (updateThrottleRef.current) {
+        clearTimeout(updateThrottleRef.current);
       }
-
-      // Append new point and keep last MAX_POINTS
-      const next = [...prev, point].slice(-MAX_POINTS);
-      return next;
-    });
-
-    lastTimestampRef.current = newestTs;
+    };
   }, [metricsHistory]);
 
   if (loading) {
@@ -156,14 +167,12 @@ export default function AnalyticsPage() {
 
     const currentValue = getLiveMetricValue();
 
-    // Calculate Y-axis domain with padding to prevent rescaling
     const dataValues = chartData.map(d => d[metricKey]).filter(v => v !== undefined && v !== null);
     const minVal = dataValues.length > 0 ? Math.min(...dataValues) : 0;
     const maxVal = dataValues.length > 0 ? Math.max(...dataValues) : 100;
     const padding = (maxVal - minVal) * 0.1 || 5;
     const yDomain = [minVal - padding, maxVal + padding];
 
-    // Custom Y-axis tick formatter to show 1 decimal place
     const formatYAxis = (value: number) => {
       return value.toFixed(1);
     };
