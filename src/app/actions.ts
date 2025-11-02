@@ -217,44 +217,53 @@ export async function applyOptimization(prevState: any, formData: FormData) {
   const clayAdj = parseFloat((formData.get('clayAdjustment') as string).replace('%', ''));
   const newFeedRate = parseFloat(formData.get('feedRateSetpoint') as string);
 
-  console.log('[APPLY] Starting optimization application');
-  console.log('[APPLY] Original LSF:', originalMetrics.lsf, 'Target LSF:', predictedLSF);
-  console.log('[APPLY] Limestone adjustment:', limestoneAdj, '%, Clay adjustment:', clayAdj, '%');
+  console.log('[APPLY] ========================================');
+  console.log('[APPLY] OPTIMIZATION APPLICATION STARTED');
+  console.log('[APPLY] Original LSF:', originalMetrics.lsf.toFixed(1), '% → Target:', predictedLSF.toFixed(1), '%');
+  console.log('[APPLY] LSF Change Required:', (predictedLSF - originalMetrics.lsf).toFixed(1), '%');
+  console.log('[APPLY] Limestone adjustment:', limestoneAdj.toFixed(1), '%');
+  console.log('[APPLY] Clay adjustment:', clayAdj.toFixed(1), '%');
+  console.log('[APPLY] ========================================');
 
   try {
-    // Calculate immediate adjustments for the first data point
+    // Calculate immediate adjustments - MUCH MORE AGGRESSIVE (50% of total)
     const limestoneAdjDecimal = limestoneAdj / 100;
     const clayAdjDecimal = clayAdj / 100;
     
-    // Apply first-step adjustments (20% of total adjustment immediately for faster response)
-    const initialConvergence = 0.20;
+    // Apply 50% of the adjustment immediately instead of 20%
+    const initialConvergence = 0.50;
     
-    // For LSF > target: need to reduce CaO (negative limestone) or increase SiO2 (negative clay)
-    // For LSF < target: need to increase CaO (positive limestone) or reduce SiO2 (positive clay)
     const newCao = originalMetrics.cao * (1 + limestoneAdjDecimal * initialConvergence);
     const newSio2 = originalMetrics.sio2 * (1 + clayAdjDecimal * initialConvergence);
     const newAl2o3 = originalMetrics.al2o3 * (1 + clayAdjDecimal * 0.3 * initialConvergence);
     
-    // Kiln temperature adjustment based on LSF direction (more aggressive)
+    // More aggressive temperature adjustment
     const lsfDiff = predictedLSF - originalMetrics.lsf;
     let tempAdjustment = 0;
     if (Math.abs(lsfDiff) > 5) {
-      // Large LSF difference needs larger temp adjustment
-      tempAdjustment = lsfDiff > 0 ? 5 : -5;
+      tempAdjustment = lsfDiff > 0 ? 10 : -10;
     } else if (Math.abs(lsfDiff) > 2) {
+      tempAdjustment = lsfDiff > 0 ? 5 : -5;
+    } else {
       tempAdjustment = lsfDiff > 0 ? 2 : -2;
     }
-    const newKilnTemp = originalMetrics.kilnTemperature + tempAdjustment;
+    const newKilnTemp = Math.max(1410, Math.min(1490, originalMetrics.kilnTemperature + tempAdjustment));
     
-    // Feed rate takes immediate step
+    // Feed rate immediate 50% adjustment
     const feedRateDiff = newFeedRate - originalMetrics.feedRate;
-    const adjustedFeedRate = originalMetrics.feedRate + feedRateDiff * 0.20;
+    const adjustedFeedRate = originalMetrics.feedRate + feedRateDiff * 0.50;
     
-    // Recalculate LSF from new composition
+    // Recalculate LSF
     const denominator = 2.8 * newSio2 + 1.18 * newAl2o3 + 0.65 * originalMetrics.fe2o3;
     const newLSF = denominator === 0 ? originalMetrics.lsf : (newCao / denominator) * 100;
     
-    console.log('[APPLY] First step - New LSF:', newLSF.toFixed(1), 'New CaO:', newCao.toFixed(2), 'New SiO2:', newSio2.toFixed(2));
+    console.log('[APPLY] ----------------------------------------');
+    console.log('[APPLY] IMMEDIATE CHANGES (50% of target):');
+    console.log('[APPLY]   LSF:', originalMetrics.lsf.toFixed(1), '→', newLSF.toFixed(1), '(Δ' + (newLSF - originalMetrics.lsf).toFixed(1) + ')');
+    console.log('[APPLY]   CaO:', originalMetrics.cao.toFixed(2), '→', newCao.toFixed(2), '(Δ' + (newCao - originalMetrics.cao).toFixed(2) + ')');
+    console.log('[APPLY]   SiO2:', originalMetrics.sio2.toFixed(2), '→', newSio2.toFixed(2), '(Δ' + (newSio2 - originalMetrics.sio2).toFixed(2) + ')');
+    console.log('[APPLY]   Temp:', originalMetrics.kilnTemperature.toFixed(1), '→', newKilnTemp.toFixed(1), '(Δ' + tempAdjustment.toFixed(1) + ')');
+    console.log('[APPLY] ----------------------------------------');
     
     // Recalculate Bogue's phases
     const cao_prime = Math.max(0, newCao - 1.5);
@@ -263,7 +272,6 @@ export async function applyOptimization(prevState: any, formData: FormData) {
     const c3s = 4.071 * cao_prime - 7.602 * newSio2 - 6.719 * newAl2o3 - 1.430 * originalMetrics.fe2o3;
     const c2s = 2.867 * newSio2 - 0.754 * c3s;
     
-    // Create the immediate optimized metric
     const optimizedMetric = {
       timestamp: new Date().toISOString(),
       plant_id: 'poc_plant_01',
@@ -280,13 +288,11 @@ export async function applyOptimization(prevState: any, formData: FormData) {
       c4af: parseFloat(Math.max(0, c4af).toFixed(2)),
     };
 
-    // Insert the immediate optimized metric
     await insertMetric(optimizedMetric as any);
     
-    console.log('[APPLY] Immediate optimized metric inserted');
-    console.log('[APPLY] LSF change:', originalMetrics.lsf.toFixed(1), '→', newLSF.toFixed(1));
+    console.log('[APPLY] ✓ Immediate metric inserted into database');
     
-    // Activate optimization target for continued convergence
+    // Activate optimization for remaining 50%
     activateOptimizationTarget(
       predictedLSF,
       newFeedRate,
@@ -294,16 +300,16 @@ export async function applyOptimization(prevState: any, formData: FormData) {
       clayAdjDecimal
     );
 
-    console.log('[APPLY] Optimization target activated for continued convergence');
-    console.log(`[APPLY] Target LSF: ${predictedLSF.toFixed(1)}%, Current LSF: ${newLSF.toFixed(1)}%`);
-    console.log(`[APPLY] Convergence will take ~60 data points (5 minutes)`);
+    console.log('[APPLY] 🎯 Continuous optimization activated');
+    console.log('[APPLY] Remaining convergence: ~30 data points (2.5 minutes)');
+    console.log('[APPLY] ========================================');
 
     return { 
       success: true, 
-      message: 'Optimization applied! Data is converging to target parameters. Watch the analytics page for real-time updates.' 
+      message: `Optimization applied! LSF moving from ${originalMetrics.lsf.toFixed(1)}% to ${predictedLSF.toFixed(1)}%. First step: ${newLSF.toFixed(1)}%` 
     };
   } catch (error: any) {
-    console.error('[APPLY] Failed to apply optimization:', error);
+    console.error('[APPLY] ❌ FAILED:', error);
     return {
       success: false,
       message: `Failed to apply optimization: ${error?.message ?? String(error)}`

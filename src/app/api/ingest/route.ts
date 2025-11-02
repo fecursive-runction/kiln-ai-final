@@ -3,14 +3,12 @@
 import { NextResponse } from 'next/server';
 import { getLatestMetric, insertMetric, ProductionMetric } from '@/lib/data/metrics';
 
-// Bogue's Equations to calculate clinker phases
 const calculateBogue = (cao: number, sio2: number, al2o3: number, fe2o3: number) => {
   const cao_prime = Math.max(0, cao - 1.5);
   const c4af = 3.043 * fe2o3;
   const c3a = 2.650 * al2o3 - 1.692 * fe2o3;
   const c3s = 4.071 * cao_prime - 7.602 * sio2 - 6.719 * al2o3 - 1.430 * fe2o3;
   const c2s = 2.867 * sio2 - 0.754 * c3s;
-
   return {
     c3s: Math.max(0, c3s),
     c2s: Math.max(0, c2s),
@@ -19,20 +17,17 @@ const calculateBogue = (cao: number, sio2: number, al2o3: number, fe2o3: number)
   };
 };
 
-// Calculate LSF
 const calculateLSF = (cao: number, sio2: number, al2o3: number, fe2o3: number) => {
   const denominator = 2.8 * sio2 + 1.18 * al2o3 + 0.65 * fe2o3;
   if (denominator === 0) return 0;
   return (cao / denominator) * 100;
 };
 
-// Critical Limits
 const KILN_TEMP_CRITICAL_HIGH = 1490;
 const KILN_TEMP_CRITICAL_LOW = 1410;
 const LSF_CRITICAL_HIGH = 100;
 const LSF_CRITICAL_LOW = 92;
 
-// Optimization target tracking
 let optimizationTarget: {
   active: boolean;
   targetLSF: number;
@@ -48,10 +43,9 @@ let optimizationTarget: {
   limestoneAdjustment: 0,
   clayAdjustment: 0,
   ticksRemaining: 0,
-  convergenceRate: 0.08,
+  convergenceRate: 0.18,
 };
 
-// Scenario state (for random critical scenarios)
 let scenario: {
   active: boolean;
   targetMetric: 'kiln_temp' | 'lsf';
@@ -66,9 +60,6 @@ let scenario: {
   bias: 0.5,
 };
 
-/**
- * Export function to activate optimization target
- */
 export async function activateOptimizationTarget(
   predictedLSF: number,
   feedRateSetpoint: number,
@@ -81,24 +72,23 @@ export async function activateOptimizationTarget(
     targetFeedRate: feedRateSetpoint,
     limestoneAdjustment: limestoneAdj,
     clayAdjustment: clayAdj,
-    ticksRemaining: 60,
-    convergenceRate: 0.08,
+    ticksRemaining: 30,
+    convergenceRate: 0.18,
   };
-  console.log('[INGEST] Optimization target activated:', {
-    targetLSF: predictedLSF.toFixed(1),
-    targetFeedRate: feedRateSetpoint.toFixed(1),
-    limestoneAdj: (limestoneAdj * 100).toFixed(1) + '%',
-    clayAdj: (clayAdj * 100).toFixed(1) + '%',
-  });
+  console.log('[INGEST] ========================================');
+  console.log('[INGEST] OPTIMIZATION TARGET ACTIVATED');
+  console.log('[INGEST]   Target LSF:', predictedLSF.toFixed(1), '%');
+  console.log('[INGEST]   Target Feed Rate:', feedRateSetpoint.toFixed(1), 'TPH');
+  console.log('[INGEST]   Limestone adj:', (limestoneAdj * 100).toFixed(1), '%');
+  console.log('[INGEST]   Clay adj:', (clayAdj * 100).toFixed(1), '%');
+  console.log('[INGEST]   Duration: 30 ticks (2.5 minutes)');
+  console.log('[INGEST]   Base convergence rate: 18% per tick');
+  console.log('[INGEST] ========================================');
 }
 
-/**
- * API route handler for ingesting data.
- */
 export async function POST() {
   try {
     const previousMetric = await getLatestMetric();
-
     let lastMetric: ProductionMetric;
 
     if (!previousMetric) {
@@ -121,7 +111,7 @@ export async function POST() {
       lastMetric = previousMetric;
     }
 
-    // --- Optimization Target Management ---
+    // --- Optimization Target Management (AGGRESSIVE) ---
     let targetLSF = 96;
     let targetFeedRate = 220;
     let caoAdjustmentFactor = 0;
@@ -135,45 +125,57 @@ export async function POST() {
 
       const lsfDistance = Math.abs(lastMetric.lsf - targetLSF);
       const feedRateDistance = Math.abs(lastMetric.feed_rate - targetFeedRate);
-      
-      console.log(`[INGEST] Tick ${60 - optimizationTarget.ticksRemaining + 1}/60 - LSF: ${lastMetric.lsf.toFixed(1)} → ${targetLSF.toFixed(1)} (Δ${lsfDistance.toFixed(1)})`);
-      
-      // Adaptive convergence rate
-      let adaptiveRate = optimizationTarget.convergenceRate;
-      if (lsfDistance > 5) {
-        adaptiveRate = 0.12;
-      } else if (lsfDistance > 2) {
-        adaptiveRate = 0.08;
-      } else if (lsfDistance < 0.5) {
-        adaptiveRate = 0.03;
-      }
-      
       const lsfError = targetLSF - lastMetric.lsf;
       
+      const tickNumber = 30 - optimizationTarget.ticksRemaining + 1;
+      console.log(`[INGEST] Tick ${tickNumber}/30 - LSF: ${lastMetric.lsf.toFixed(1)}% → ${targetLSF.toFixed(1)}% (Δ${lsfDistance.toFixed(1)}%)`);
+      
+      // MUCH MORE AGGRESSIVE adaptive rate
+      let adaptiveRate = optimizationTarget.convergenceRate;
+      if (lsfDistance > 5) {
+        adaptiveRate = 0.25; // 25% per tick when very far
+      } else if (lsfDistance > 2) {
+        adaptiveRate = 0.18; // 18% per tick when far
+      } else if (lsfDistance > 0.5) {
+        adaptiveRate = 0.12; // 12% per tick when close
+      } else {
+        adaptiveRate = 0.06; // 6% per tick when very close
+      }
+      
+      console.log(`[INGEST]   Convergence rate: ${(adaptiveRate * 100).toFixed(0)}%`);
+      
+      // Apply adjustments with full force
       caoAdjustmentFactor = optimizationTarget.limestoneAdjustment * adaptiveRate;
       sio2AdjustmentFactor = optimizationTarget.clayAdjustment * adaptiveRate;
       al2o3AdjustmentFactor = optimizationTarget.clayAdjustment * adaptiveRate * 0.5;
 
-      if (Math.abs(lsfError) > 3) {
+      // Very aggressive temperature adjustment
+      if (Math.abs(lsfError) > 5) {
+        kilnTempAdjustment = lsfError > 0 ? 3.0 : -3.0;
+      } else if (Math.abs(lsfError) > 2) {
         kilnTempAdjustment = lsfError > 0 ? 1.5 : -1.5;
-      } else if (Math.abs(lsfError) > 1) {
+      } else if (Math.abs(lsfError) > 0.5) {
         kilnTempAdjustment = lsfError > 0 ? 0.8 : -0.8;
-      } else if (Math.abs(lsfError) > 0.3) {
+      } else {
         kilnTempAdjustment = lsfError > 0 ? 0.3 : -0.3;
       }
 
       optimizationTarget.ticksRemaining--;
       
-      const isLSFAchieved = lsfDistance < 0.3;
-      const isFeedRateAchieved = feedRateDistance < 1.0;
+      const isLSFAchieved = lsfDistance < 0.4;
+      const isFeedRateAchieved = feedRateDistance < 1.5;
       
       if (optimizationTarget.ticksRemaining === 0 || (isLSFAchieved && isFeedRateAchieved)) {
-        console.log('[INGEST] ✓ Optimization target achieved!');
+        console.log('[INGEST] ========================================');
+        console.log('[INGEST] ✓✓✓ OPTIMIZATION TARGET ACHIEVED! ✓✓✓');
         console.log(`[INGEST]   Final LSF: ${lastMetric.lsf.toFixed(1)}% (Target: ${targetLSF.toFixed(1)}%)`);
         console.log(`[INGEST]   Final Feed Rate: ${lastMetric.feed_rate.toFixed(1)} TPH (Target: ${targetFeedRate.toFixed(1)} TPH)`);
+        console.log(`[INGEST]   Completed in ${tickNumber} ticks`);
+        console.log('[INGEST] ========================================');
         optimizationTarget.active = false;
-      } else if (optimizationTarget.ticksRemaining % 10 === 0) {
-        console.log(`[INGEST] Progress: ${((60 - optimizationTarget.ticksRemaining) / 60 * 100).toFixed(0)}% complete`);
+      } else if (tickNumber % 5 === 0) {
+        const progress = (tickNumber / 30 * 100).toFixed(0);
+        console.log(`[INGEST] 📊 Progress: ${progress}% complete (${tickNumber}/30 ticks)`);
       }
     }
 
@@ -187,9 +189,7 @@ export async function POST() {
       scenario.ticksRemaining = Math.floor(Math.random() * 11) + 20;
       const targetHigh = Math.random() > 0.5;
       const targetMetric = Math.random() > 0.5 ? 'kiln_temp' : 'lsf';
-      
       scenario.targetMetric = targetMetric;
-
       if (targetMetric === 'kiln_temp') {
         scenario.targetValue = targetHigh ? KILN_TEMP_CRITICAL_HIGH + 5 : KILN_TEMP_CRITICAL_LOW - 5;
         scenario.bias = targetHigh ? 0.4 : 0.6;
@@ -199,7 +199,7 @@ export async function POST() {
       }
     }
 
-    // --- Metric Simulation ---
+    // --- Metric Simulation (AGGRESSIVE BIAS) ---
     const isLsfScenario = scenario.active && scenario.targetMetric === 'lsf';
     let lsf_bias = isLsfScenario ? scenario.bias : 0.5;
 
@@ -213,21 +213,23 @@ export async function POST() {
 
     if (optimizationTarget.active) {
       const lsfError = targetLSF - lastMetric.lsf;
+      // MUCH STRONGER BIAS - almost deterministic movement toward target
       if (Math.abs(lsfError) > 5) {
-        lsf_bias = lsfError > 0 ? 0.2 : 0.8;
+        lsf_bias = lsfError > 0 ? 0.15 : 0.85; // 85/15 split
       } else if (Math.abs(lsfError) > 2) {
-        lsf_bias = lsfError > 0 ? 0.3 : 0.7;
+        lsf_bias = lsfError > 0 ? 0.25 : 0.75; // 75/25 split
+      } else if (Math.abs(lsfError) > 0.5) {
+        lsf_bias = lsfError > 0 ? 0.35 : 0.65; // 65/35 split
       } else {
-        lsf_bias = lsfError > 0 ? 0.4 : 0.6;
+        lsf_bias = lsfError > 0 ? 0.40 : 0.60; // 60/40 split
       }
     }
 
-    const lsf_step = optimizationTarget.active ? 0.25 : 0.15;
+    const lsf_step = optimizationTarget.active ? 0.35 : 0.15; // Much larger steps
     let newLsf = lastMetric.lsf + (Math.random() - lsf_bias) * lsf_step;
     
     // Kiln temperature
     let kiln_temp_bias = (scenario.active && scenario.targetMetric === 'kiln_temp') ? scenario.bias : 0.5;
-
     if (!scenario.active || scenario.targetMetric !== 'kiln_temp') {
       if (lastMetric.kiln_temp > KILN_TEMP_CRITICAL_HIGH) {
         kiln_temp_bias = 0.6;
@@ -238,14 +240,14 @@ export async function POST() {
 
     const kiln_temp_step = 1.5;
     let newKilnTemp = lastMetric.kiln_temp + (Math.random() - kiln_temp_bias) * kiln_temp_step + kilnTempAdjustment;
+    newKilnTemp = Math.max(1400, Math.min(1500, newKilnTemp)); // Clamp to safe range
     
-    // Feed rate
+    // Feed rate - aggressive convergence
     const feed_rate_step = 0.5;
     let newFeedRate: number;
-    
     if (optimizationTarget.active) {
       const diff = targetFeedRate - lastMetric.feed_rate;
-      newFeedRate = lastMetric.feed_rate + diff * optimizationTarget.convergenceRate + (Math.random() - 0.5) * feed_rate_step * 0.5;
+      newFeedRate = lastMetric.feed_rate + diff * 0.20 + (Math.random() - 0.5) * feed_rate_step * 0.3;
     } else {
       newFeedRate = lastMetric.feed_rate + (Math.random() - 0.5) * feed_rate_step;
     }
@@ -257,9 +259,10 @@ export async function POST() {
     const newFe2o3 = lastMetric.fe2o3 + (Math.random() - 0.5) * 0.05;
 
     if (optimizationTarget.active) {
-      newCao = lastMetric.cao * (1 + caoAdjustmentFactor) + (Math.random() - 0.5) * 0.05;
-      newSio2 = lastMetric.sio2 * (1 + sio2AdjustmentFactor) + (Math.random() - 0.5) * 0.05;
-      newAl2o3 = lastMetric.al2o3 * (1 + al2o3AdjustmentFactor) + (Math.random() - 0.5) * 0.02;
+      // Direct application of adjustments with minimal noise
+      newCao = lastMetric.cao * (1 + caoAdjustmentFactor) + (Math.random() - 0.5) * 0.03;
+      newSio2 = lastMetric.sio2 * (1 + sio2AdjustmentFactor) + (Math.random() - 0.5) * 0.03;
+      newAl2o3 = lastMetric.al2o3 * (1 + al2o3AdjustmentFactor) + (Math.random() - 0.5) * 0.01;
     } else {
       const lsf_change = newLsf - lastMetric.lsf;
       newCao = lastMetric.cao + (lsf_change * 0.1) + (Math.random() - 0.5) * 0.08;
@@ -267,9 +270,8 @@ export async function POST() {
       newAl2o3 = lastMetric.al2o3 + (Math.random() - 0.5) * 0.05;
     }
 
-    // Recalculate LSF
+    // Recalculate LSF from actual composition
     newLsf = calculateLSF(newCao, newSio2, newAl2o3, newFe2o3);
-    
     const boguePhases = calculateBogue(newCao, newSio2, newAl2o3, newFe2o3);
 
     const newMetric: ProductionMetric = {
