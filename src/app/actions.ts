@@ -1,3 +1,4 @@
+// src/app/actions.ts - FIXED VERSION
 'use server';
 
 import { optimizeCementProduction } from '@/ai/flows/optimize-cement-production';
@@ -13,8 +14,10 @@ import {
 } from '@/lib/data/metrics';
 import { plantAgentFlow } from '@/ai/flows/plant-agent';
 import { Action } from 'genkit';
-import { activateOptimizationTarget } from '@/app/api/ingest/route';
 
+// CRITICAL: Import the activation function from the route
+// This ensures we can trigger optimization
+import { activateOptimizationTarget } from '@/app/api/ingest/route';
 
 export async function getLiveMetrics() {
   try {
@@ -202,6 +205,10 @@ export async function getAiAlerts() {
 }
 
 export async function applyOptimization(prevState: any, formData: FormData) {
+  console.log('[APPLY] ═══════════════════════════════════════');
+  console.log('[APPLY] 🚀 STARTING OPTIMIZATION APPLICATION');
+  console.log('[APPLY] ═══════════════════════════════════════');
+
   const originalMetrics = {
     kilnTemperature: parseFloat(formData.get('kilnTemperature') as string),
     feedRate: parseFloat(formData.get('feedRate') as string),
@@ -213,60 +220,63 @@ export async function applyOptimization(prevState: any, formData: FormData) {
   };
 
   const predictedLSF = parseFloat(formData.get('predictedLSF') as string);
-  const limestoneAdj = parseFloat((formData.get('limestoneAdjustment') as string).replace('%', ''));
-  const clayAdj = parseFloat((formData.get('clayAdjustment') as string).replace('%', ''));
+  const limestoneAdjStr = formData.get('limestoneAdjustment') as string;
+  const clayAdjStr = formData.get('clayAdjustment') as string;
   const newFeedRate = parseFloat(formData.get('feedRateSetpoint') as string);
 
-  console.log('[APPLY] ═══════════════════════════════════════');
-  console.log('[APPLY] 🚀 OPTIMIZATION APPLICATION');
-  console.log('[APPLY] ═══════════════════════════════════════');
+  // Parse adjustments (remove % sign if present)
+  const limestoneAdj = parseFloat(limestoneAdjStr.replace('%', '')) / 100;
+  const clayAdj = parseFloat(clayAdjStr.replace('%', '')) / 100;
+
   console.log('[APPLY] Current State:');
-  console.log('[APPLY]   LSF:', originalMetrics.lsf.toFixed(1), '%');
+  console.log('[APPLY]   LSF:', originalMetrics.lsf.toFixed(2), '%');
   console.log('[APPLY]   CaO:', originalMetrics.cao.toFixed(2), '%');
   console.log('[APPLY]   SiO2:', originalMetrics.sio2.toFixed(2), '%');
   console.log('[APPLY]   Temperature:', originalMetrics.kilnTemperature.toFixed(1), '°C');
   console.log('[APPLY] ───────────────────────────────────────');
   console.log('[APPLY] Target State:');
-  console.log('[APPLY]   LSF:', predictedLSF.toFixed(1), '%');
-  console.log('[APPLY]   Limestone adjustment:', limestoneAdj.toFixed(1), '%');
-  console.log('[APPLY]   Clay adjustment:', clayAdj.toFixed(1), '%');
+  console.log('[APPLY]   LSF:', predictedLSF.toFixed(2), '% (Δ', (predictedLSF - originalMetrics.lsf).toFixed(2), '%)');
+  console.log('[APPLY]   Limestone adjustment:', (limestoneAdj * 100).toFixed(2), '%');
+  console.log('[APPLY]   Clay adjustment:', (clayAdj * 100).toFixed(2), '%');
   console.log('[APPLY]   Feed rate:', newFeedRate.toFixed(1), 'TPH');
   console.log('[APPLY] ───────────────────────────────────────');
-  console.log('[APPLY] Change Required:');
-  console.log('[APPLY]   LSF Δ:', (predictedLSF - originalMetrics.lsf).toFixed(1), '%');
-  console.log('[APPLY] ═══════════════════════════════════════');
 
   try {
-    
-    const limestoneAdjDecimal = limestoneAdj / 100;
-    const clayAdjDecimal = clayAdj / 100;
-    
-    activateOptimizationTarget(
+    // CRITICAL: Directly call the activation function
+    console.log('[APPLY] 🎯 Calling activateOptimizationTarget...');
+    await activateOptimizationTarget(
       predictedLSF,
       newFeedRate,
-      limestoneAdjDecimal,
-      clayAdjDecimal
+      limestoneAdj,
+      clayAdj
     );
+    console.log('[APPLY] ✅ activateOptimizationTarget completed successfully');
 
-    console.log('[APPLY] ✅ Optimization target activated');
+    console.log('[APPLY] ═══════════════════════════════════════');
+    console.log('[APPLY] ✅ OPTIMIZATION ACTIVATED');
     console.log('[APPLY] 🔄 Data ingestion now controlled by optimizer');
-    console.log('[APPLY] ⏱️  Expected completion: ~3.3 minutes (40 ticks)');
-    console.log('[APPLY] 📊 Watch the Analytics page for real-time convergence');
+    console.log('[APPLY] ⏱️  Expected completion: ~3.3 minutes (40 ticks @ 5s)');
+    console.log('[APPLY] 📊 Watch the Dashboard/Analytics for real-time convergence');
+    console.log('[APPLY] 📝 Check browser console for tick-by-tick logs');
     console.log('[APPLY] ═══════════════════════════════════════');
 
     return { 
       success: true, 
-      message: `Optimization activated! System converging from ${originalMetrics.lsf.toFixed(1)}% to ${predictedLSF.toFixed(1)}%. Normal data trends suspended until target achieved (~3.3 minutes).` 
+      message: `Optimization activated! System converging from ${originalMetrics.lsf.toFixed(1)}% to ${predictedLSF.toFixed(1)}% LSF. Monitor the dashboard for smooth, direct convergence over the next 3.3 minutes.` 
     };
   } catch (error: any) {
     console.error('[APPLY] ❌ FAILED:', error);
+    console.error('[APPLY] Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    });
     return {
       success: false,
       message: `Failed to apply optimization: ${error?.message ?? String(error)}`
     };
   }
 }
-
 
 export async function askPlantGuardian(
   chatHistory: Array<{ role: 'user' | 'assistant'; content: string }>
