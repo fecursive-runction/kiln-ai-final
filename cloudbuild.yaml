@@ -1,0 +1,19 @@
+steps:
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  id: Deploy Cloud Run Service
+  entrypoint: gcloud
+  args:
+    [
+      'run',
+      'deploy',
+      'kiln-ai',
+      '--source',
+      '.',
+      '--region',
+      'asia-south1',
+      '--project',
+      'kiln-ai-cloud',
+      '--update-secrets',
+      'GEMINI_API_KEY=GEMINI_API_KEY:latest,GEMINI_API_KEY_ALERTS=GEMINI_API_KEY_ALERTS:latest,GEMINI_API_KEY_OPTIMIZER=GEMINI_API_KEY_OPTIMIZER:latest,GEMINI_API_KEY_PLANTGPT=GEMINI_API_KEY_PLANTGPT:latest,GOOGLE_CREDENTIALS_JSON=GOOGLE_CREDENTIALS_JSON:latest,NEXT_PUBLIC_SUPABASE_ANON_KEY=NEXT_PUBLIC_SUPABASE_ANON_KEY:latest,NEXT_PUBLIC_SUPABASE_URL=NEXT_PUBLIC_SUPABASE_URL:latest,SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest',
+      '--allow-unauthenticated'
+    ]
