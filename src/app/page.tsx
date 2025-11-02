@@ -30,7 +30,6 @@ export default function DashboardPage() {
 
   return (
     <div className="w-full">
-      {/* Mobile Layout */}
       <div className="lg:hidden p-4 space-y-4 pb-20">
   <PlantStatus />
         <LiveMetricsPanel liveMetrics={liveMetrics} />
@@ -39,20 +38,16 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* Desktop Layout */}
       <div className="hidden lg:block p-6 space-y-6 h-screen overflow-hidden">
         <div className="grid grid-cols-12 gap-6 h-[calc(100vh-180px)]">
-          {/* LEFT COLUMN - Plant Status */}
           <div className="col-span-3 overflow-hidden h-full">
             <PlantStatus />
           </div>
 
-          {/* MIDDLE COLUMN - Live Metrics */}
           <div className="col-span-6 overflow-hidden h-full">
             <LiveMetricsPanel liveMetrics={liveMetrics} />
           </div>
 
-          {/* RIGHT COLUMN - Alerts Feed */}
           <div className="col-span-3 overflow-y-auto h-full">
             <AlertsFeed alerts={alerts} liveMetrics={liveMetrics} />
           </div>

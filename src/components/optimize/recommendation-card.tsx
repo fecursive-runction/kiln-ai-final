@@ -43,7 +43,6 @@ export function RecommendationCard() {
     return 'bg-secondary border-border text-foreground';
   };
 
-  // Show progress bar if generating
   if (isGenerating) {
     return (
       <Card className="border-primary/50">
@@ -88,7 +87,6 @@ export function RecommendationCard() {
     );
   }
 
-  // Show error if present
   if (error && !isGenerating) {
     return (
       <Card className="border-destructive/50 bg-destructive/5">
@@ -99,7 +97,6 @@ export function RecommendationCard() {
     );
   }
 
-  // Show placeholder if no recommendation
   if (!recommendation) {
     return (
       <div className="text-center space-y-4">
@@ -118,7 +115,6 @@ export function RecommendationCard() {
     );
   }
 
-  // Show recommendation
   return (
     <motion.div
       initial={{ y: 20, opacity: 0 }}

@@ -12,7 +12,6 @@ import { getLiveMetrics, getAiAlerts, getMetricsHistory } from '@/app/actions';
 import { toast } from '@/hooks/use-toast';
 import { formatChartTime } from '@/lib/formatters';
 
-// Type definitions
 export interface LiveMetrics {
   kilnTemperature: number;
   feedRate: number;
@@ -204,7 +203,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // FIX: Reset application state when starting new optimization
     setApplicationState({
       isApplying: false,
       success: false,
@@ -296,7 +294,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       error: null,
       recommendation: null,
     });
-    // FIX: Also clear application state
     setApplicationState({
       isApplying: false,
       success: false,
@@ -384,7 +381,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Ingestion interval
   useEffect(() => {
     const startIngest = () => {
       if (ingestRef.current) return;
@@ -410,14 +406,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return () => stopIngest();
   }, [plantRunning]);
 
-  // Polling interval
   useEffect(() => {
     fetchData();
     const pollInterval = setInterval(fetchData, 5000);
     return () => clearInterval(pollInterval);
   }, []);
 
-  // Visibility change handler
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
@@ -430,7 +424,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (progressIntervalRef.current) {

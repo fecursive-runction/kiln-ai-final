@@ -84,9 +84,6 @@ export function Header({ onMenuClick, isSidebarOpen }: HeaderProps) {
           <a href="/" className="flex items-center gap-3">
             <div className="bg-primary/10 p-0 rounded-lg border border-primary/30 neon-glow w-10 h-10 flex items-center justify-center">
 
-              {/* - Added brightness-150 to make the whole icon brighter.
-      - Added a white drop-shadow to create a subtle glow effect.
-    */}
               <img
                 src="/icon.png"
                 alt="kiln.AI logo"

@@ -1,7 +1,3 @@
-/**
- * Operational Thresholds and Business Rules
- * Defines exact ranges for all production metrics
- */
 export const THRESHOLDS = {
   LSF: {
     IDEAL_MIN: 94,
@@ -30,23 +26,15 @@ export const THRESHOLDS = {
   },
 } as const;
 
-/**
- * LSF Badge Color Variant
- * Returns the appropriate badge variant based on LSF value
- */
 export function getLSFBadgeVariant(
   lsf: number
 ): 'default' | 'destructive' | 'secondary' {
   if (lsf < THRESHOLDS.LSF.IDEAL_MIN || lsf > THRESHOLDS.LSF.IDEAL_MAX) {
-    return 'destructive'; // Red - out of ideal range
+    return 'destructive';
   }
-  return 'secondary'; // Gray/Blue - normal
+  return 'secondary';
 }
 
-/**
- * Temperature Status and Color
- * Returns status and appropriate color class for temperature
- */
 export function getTemperatureStatus(temp: number): {
   color: string;
   status: 'critical' | 'warning' | 'normal';
@@ -81,10 +69,6 @@ export function getTemperatureStatus(temp: number): {
   };
 }
 
-/**
- * Alert Severity Styling
- * Visual styles for different alert severities
- */
 export const ALERT_STYLES = {
   CRITICAL: {
     bgColor: 'bg-red-500',
@@ -104,16 +88,10 @@ export const ALERT_STYLES = {
   },
 } as const;
 
-/**
- * Check if LSF is in optimal range
- */
 export function isLSFOptimal(lsf: number): boolean {
   return lsf >= THRESHOLDS.LSF.IDEAL_MIN && lsf <= THRESHOLDS.LSF.IDEAL_MAX;
 }
 
-/**
- * Check if temperature is in optimal range
- */
 export function isTemperatureOptimal(temp: number): boolean {
   return (
     temp >= THRESHOLDS.KILN_TEMP.IDEAL_MIN &&
@@ -121,9 +99,6 @@ export function isTemperatureOptimal(temp: number): boolean {
   );
 }
 
-/**
- * Check if temperature requires an alert
- */
 export function requiresTemperatureAlert(temp: number): boolean {
   return (
     temp < THRESHOLDS.KILN_TEMP.CRITICAL_LOW ||
@@ -135,9 +110,6 @@ export function requiresTemperatureAlert(temp: number): boolean {
   );
 }
 
-/**
- * Get LSF recommendation message
- */
 export function getLSFRecommendation(lsf: number): string {
   if (lsf < THRESHOLDS.LSF.IDEAL_MIN) {
     return `LSF is low (${lsf.toFixed(1)}%). Consider increasing limestone feed.`;

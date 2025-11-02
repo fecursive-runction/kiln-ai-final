@@ -160,10 +160,8 @@ export function MetricsDataTable({ data }: MetricsDataTableProps) {
       <Card className="p-4">
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
 
-          {/* MODIFICATION: Grouping div now has `md:flex-1` to take up space */}
           <div className="flex flex-col md:flex-row md:items-center gap-4 w-full md:flex-1">
 
-            {/* MODIFICATION: Removed `md:max-w-sm` to allow search bar to grow */}
             <div className="flex-1 w-full">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -260,8 +258,6 @@ export function MetricsDataTable({ data }: MetricsDataTableProps) {
                   const tempStatus = getTemperatureStatus(metric.kiln_temp);
                   const lsfBadge = getLSFBadgeVariant(metric.lsf);
 
-                  // FIX: Use a more stable key combining index and timestamp
-                  // This prevents issues when multiple records have the same timestamp
                   const rowKey = metric.id
                     ? String(metric.id)
                     : `${metric.timestamp}-${metric.plant_id}-${idx}`;

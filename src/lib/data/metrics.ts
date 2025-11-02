@@ -79,7 +79,6 @@ export async function getRecentAlerts(limit = 5) {
     .limit(limit);
 
   if (error) {
-    // If alerts table doesn't exist, return empty list instead of throwing in some cases
     console.warn('getRecentAlerts error:', error.message || error);
     return [];
   }
@@ -126,7 +125,6 @@ export async function insertAlert(record: { severity: string; message: string; m
   return true;
 }
 
-// Export a simple schema for production metric validation (optional)
 export const ProductionMetricSchema = z.object({
   timestamp: z.string(),
   plant_id: z.string(),

@@ -1,20 +1,11 @@
 'use server';
 
-/**
- * @fileOverview AI-powered optimization recommendations for cement production.
- * * - optimizeCementProduction - A function that handles the cement production optimization process.
- */
-
 import {optimizerAI as ai} from '@/ai/genkit';
-// *** MODIFIED ***
-// Import schemas and types from the new non-server file
 import { 
   type OptimizeCementProductionInput,
   type AIGenerationOutput,
   AIGenerationSchema 
 } from './optimization-schemas';
-
-// *** REMOVED ALL ZOD SCHEMA AND TYPE EXPORTS FROM THIS FILE ***
 
 export async function optimizeCementProduction(input: OptimizeCementProductionInput): Promise<AIGenerationOutput> {
   const { output } = await ai.generate({
@@ -45,8 +36,6 @@ export async function optimizeCementProduction(input: OptimizeCementProductionIn
     ONLY output a valid JSON object matching the output schema.
     `,
     output: {
-      // *** MODIFIED ***
-      // Use the imported schema
       schema: AIGenerationSchema,
     },
     config: {

@@ -48,10 +48,8 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Status colors
         success: "hsl(var(--success))",
         warning: "hsl(var(--warning))",
-        // Chart colors
         chart: {
           blue: "hsl(var(--chart-blue))",
           purple: "hsl(var(--chart-purple))",

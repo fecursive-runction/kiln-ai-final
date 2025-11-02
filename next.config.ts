@@ -1,13 +1,11 @@
 import type {NextConfig} from 'next';
 import { config } from 'dotenv';
 
-// Only run dotenv in non-production environments
 if (process.env.NODE_ENV !== 'production') {
-  config(); // Load environment variables from .env file
+  config();
 }
 
 const nextConfig: NextConfig = {
-  /* config options here */
   typescript: {
     ignoreBuildErrors: true,
   },

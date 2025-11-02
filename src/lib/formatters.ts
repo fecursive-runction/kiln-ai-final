@@ -1,7 +1,3 @@
-/**
- * Number Formatting Utility
- * Formats numbers for display using Intl.NumberFormat
- */
 export function formatNumber(
   value: number,
   options: {
@@ -20,10 +16,6 @@ export function formatNumber(
   }).format(value);
 }
 
-/**
- * Relative Time Display
- * Converts a timestamp to relative time (e.g., "5m ago", "2h ago")
- */
 export function getRelativeTime(timestamp: Date | string): string {
   const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
   const now = new Date();
@@ -40,9 +32,6 @@ export function getRelativeTime(timestamp: Date | string): string {
   return `${diffDays}d ago`;
 }
 
-/**
- * Format timestamp for display (client-safe)
- */
 export function formatTimestamp(timestamp: string | Date): string {
   const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
   return date.toLocaleString('en-US', {
@@ -53,9 +42,6 @@ export function formatTimestamp(timestamp: string | Date): string {
   });
 }
 
-/**
- * Format time for chart display (HH:MM)
- */
 export function formatChartTime(timestamp: string | Date): string {
   const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
   return date.toLocaleTimeString([], {
@@ -63,17 +49,3 @@ export function formatChartTime(timestamp: string | Date): string {
     minute: '2-digit',
   });
 }
-
-/**
- * Usage Examples:
- * 
- * // Temperature
- * formatNumber(1450.234); // "1,450.23"
- * formatNumber(1450.234, { decimals: 1 }); // "1,450.2"
- * 
- * // Percentages
- * formatNumber(96.789, { decimals: 1 }); // "96.8"
- * 
- * // Relative time
- * getRelativeTime(new Date(Date.now() - 300000)); // "5m ago"
- */

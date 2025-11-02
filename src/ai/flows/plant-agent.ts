@@ -1,7 +1,3 @@
-//
-// FILE: src/ai/flows/plant-agent.ts (FIXED)
-//
-
 import { plantGPTAI as ai } from '../genkit';
 import {
   getLiveMetrics,
@@ -117,8 +113,6 @@ export const plantAgentFlow = ai.defineFlow(
       ],
     });
 
-    // FIX: Access the text content correctly
-    // The generate response has a text property that's a string, not a method
     return llmResponse.text || '';
   }
 );

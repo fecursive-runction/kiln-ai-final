@@ -1,4 +1,3 @@
-// src/app/analytics/page.tsx (FIXED)
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '@/context/DataProvider';
@@ -33,18 +32,14 @@ export default function AnalyticsPage() {
   const lastProcessedIdRef = useRef<number |string| null>(null);
   const chartInitializedRef = useRef(false);
 
-  // Initialize and update chart data
   useEffect(() => {
     if (!metricsHistory || metricsHistory.length === 0) return;
 
-    // Get the newest metric
     const newest = metricsHistory[metricsHistory.length - 1];
     const newestId = newest.id || newest.timestamp;
 
-    // Skip if we've already processed this data point
     if (lastProcessedIdRef.current === newestId) return;
 
-    // Initial load: populate with last 50 points
     if (!chartInitializedRef.current) {
       chartInitializedRef.current = true;
       
@@ -77,7 +72,6 @@ export default function AnalyticsPage() {
       return;
     }
 
-    // Add new point to the end (left-to-right flow)
     const newPoint = {
       time: new Date(newest.timestamp).toLocaleTimeString('en-US', {
         hour: '2-digit',
@@ -99,7 +93,6 @@ export default function AnalyticsPage() {
     };
 
     setChartData((prev) => {
-      // Append to end and keep only last MAX_POINTS
       const updated = [...prev, newPoint].slice(-MAX_POINTS);
       return updated;
     });
@@ -107,7 +100,6 @@ export default function AnalyticsPage() {
     lastProcessedIdRef.current = newestId;
   }, [metricsHistory]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       chartInitializedRef.current = false;

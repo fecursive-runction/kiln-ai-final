@@ -65,7 +65,6 @@ function OptimizationPageContent() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT COLUMN - Live Plant State */}
         <div>
           <Card className="h-full">
             <CardHeader className="border-b border-border">
@@ -165,7 +164,6 @@ function OptimizationPageContent() {
           </Card>
         </div>
 
-        {/* MIDDLE COLUMN - Optimization Form */}
         <div>
           <OptimizationForm
             initialMetrics={
@@ -177,7 +175,6 @@ function OptimizationPageContent() {
           />
         </div>
 
-        {/* RIGHT COLUMN - How It Works */}
         <div>
           <Card className="h-full bg-secondary/30">
             <CardHeader>
@@ -226,7 +223,6 @@ function OptimizationPageContent() {
         </div>
       </div>
 
-      {/* Full-width Recommendation card */}
       <Card className="bg-secondary/20">
         <CardHeader>
           <CardTitle className="text-sm">AI Optimization</CardTitle>

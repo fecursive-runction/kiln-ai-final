@@ -1,4 +1,3 @@
-// src/components/optimize/optimization-form.tsx
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -46,7 +45,6 @@ export function OptimizationForm({ initialMetrics, liveMetrics }: OptimizationFo
     fe2o3: '',
   });
 
-  // Auto-trigger if needed
   useEffect(() => {
     if (initialMetrics?.trigger && formRef.current && !pendingOptimization.isGenerating && !pendingOptimization.recommendation) {
       setTimeout(() => {

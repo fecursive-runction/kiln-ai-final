@@ -1,13 +1,4 @@
-
 'use server';
-
-/**
- * @fileOverview AI-powered alert generation for cement plant monitoring.
- * 
- * - generateAlerts - A function that generates alerts based on live production data.
- * - GenerateAlertsInput - The input type for the generateAlerts function.
- * - GenerateAlertsOutput - The return type for the generateAlerts function.
- */
 
 import { alertsAI as ai } from '@/ai/genkit';
 import { z } from 'zod';
@@ -69,7 +60,6 @@ export async function generateAlerts(input: GenerateAlertsInput): Promise<Genera
     return output;
   } catch (error) {
     console.error('Error generating AI alerts:', error);
-    // In case of an error, return an empty array of alerts to prevent crashing.
     return { alerts: [] };
   }
 }

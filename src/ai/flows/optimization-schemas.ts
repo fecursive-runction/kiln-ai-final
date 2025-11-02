@@ -13,7 +13,6 @@ export const OptimizeCementProductionInputSchema = z.object({
 });
 export type OptimizeCementProductionInput = z.infer<typeof OptimizeCementProductionInputSchema>;
 
-// This schema defines the *full* data structure our app will use
 export const OptimizeCementProductionOutputSchema = z.object({
   recommendationId: z.string().describe('A unique ID for the recommendation, e.g., "REC-20240521-001".'),
   feedRateSetpoint: z.number().describe('A number representing the recommended feed rate setpoint in tons per hour.'),
@@ -24,9 +23,6 @@ export const OptimizeCementProductionOutputSchema = z.object({
 });
 export type OptimizeCementProductionOutput = z.infer<typeof OptimizeCementProductionOutputSchema>;
 
-
-// This schema defines what we will ask the AI to generate.
-// We have OMITTED 'predictedLSF' to make the AI much faster.
 export const AIGenerationSchema = OptimizeCementProductionOutputSchema.omit({ 
   predictedLSF: true 
 });
