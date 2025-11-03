@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useData } from '@/context/DataProvider';
 import { OptimizationForm } from '@/components/optimize/optimization-form';
@@ -13,6 +13,7 @@ import { formatNumber } from '@/lib/formatters';
 function OptimizationPageContent() {
   const searchParams = useSearchParams();
   const { liveMetrics, loading } = useData();
+  const recommendationRef = useRef<HTMLDivElement>(null);
 
   const initialMetrics = {
     kilnTemperature: searchParams.get('kilnTemperature')
@@ -172,6 +173,12 @@ function OptimizationPageContent() {
                 : undefined
             } 
             liveMetrics={liveMetrics?? undefined}
+            onOptimized={() => {
+              recommendationRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+              });
+            }}
           />
         </div>
 
@@ -223,7 +230,7 @@ function OptimizationPageContent() {
         </div>
       </div>
 
-      <Card className="bg-secondary/20">
+      <Card className="bg-secondary/20" ref={recommendationRef}>
         <CardHeader>
           <CardTitle className="text-sm">AI Optimization</CardTitle>
         </CardHeader>

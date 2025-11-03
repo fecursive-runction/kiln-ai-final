@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:9002'],
+      allowedOrigins: ['localhost:9003', 'refactored-carnival-r4vjj9vgrg49hpjvr-9003.app.github.dev'],
     },
   },
 };

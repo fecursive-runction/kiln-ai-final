@@ -29,9 +29,10 @@ interface OptimizationFormProps {
     al2o3?: number;
     fe2o3?: number;
   };
-}
+  onOptimized?: () => void;
+} // <--- This closing brace was missing!
 
-export function OptimizationForm({ initialMetrics, liveMetrics }: OptimizationFormProps) {
+export function OptimizationForm({ initialMetrics, liveMetrics, onOptimized }: OptimizationFormProps) {
   const { pendingOptimization, startOptimization, clearOptimization } = useData();
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -53,8 +54,18 @@ export function OptimizationForm({ initialMetrics, liveMetrics }: OptimizationFo
     }
   }, [initialMetrics?.trigger]);
 
+  const [shouldScroll, setShouldScroll] = useState(false);
+
+  useEffect(() => {
+    if (pendingOptimization.recommendation && onOptimized && shouldScroll) {
+      onOptimized();
+      setShouldScroll(false);
+    }
+  }, [pendingOptimization.recommendation, onOptimized, shouldScroll]);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setShouldScroll(true);
 
     const formData = new FormData();
     if (liveMetrics) {
@@ -160,7 +171,7 @@ export function OptimizationForm({ initialMetrics, liveMetrics }: OptimizationFo
                   className="flex-1 min-w-0 font-mono"
                 >
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Optimizing ({Math.round(pendingOptimization.progress)}%)
+                  Optimizing...
                 </Button>
                 <Button
                   type="button"

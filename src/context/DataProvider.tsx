@@ -8,7 +8,8 @@ import {
   ReactNode,
   useRef,
 } from 'react';
-import { getLiveMetrics, getAiAlerts, getMetricsHistory } from '@/app/actions';
+import { getAiAlerts } from '@/app/actions';
+import { getLatestMetric, getMetricsHistory } from '@/lib/data/metrics';
 import { toast } from '@/hooks/use-toast';
 import { formatChartTime } from '@/lib/formatters';
 
@@ -80,10 +81,11 @@ interface DataContextValue {
   metricsHistory: ProductionMetric[];
   chartData: ChartDataPoint[];
   loading: boolean;
+  plantStatus: 'RUNNING' | 'STOPPED' | 'EMERGENCY' | 'FAULT' | 'LOADING';
   refreshData: () => Promise<void>;
   startPlant: () => Promise<void>;
-  stopPlant: () => void;
-  emergencyStop: () => void;
+  stopPlant: () => Promise<void>;
+  emergencyStop: () => Promise<void>;
   
   pendingOptimization: {
     isGenerating: boolean;
@@ -109,10 +111,11 @@ const DataContext = createContext<DataContextValue>({
   metricsHistory: [],
   chartData: [],
   loading: true,
+  plantStatus: 'RUNNING',
   refreshData: async () => {},
   startPlant: async () => {},
-  stopPlant: () => {},
-  emergencyStop: () => {},
+  stopPlant: async () => {},
+  emergencyStop: async () => {},
   pendingOptimization: {
     isGenerating: false,
     progress: 0,
@@ -148,7 +151,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [plantRunning, setPlantRunning] = useState(true);
+  const [manualStatus, setManualStatus] = useState<'RUNNING' | 'STOPPED' | 'EMERGENCY' | null>(null);
   const ingestRef = useRef<any>(0);
+
+  const plantStatus = usePlantStatus(liveMetrics, loading, manualStatus);
 
   const [optimizationState, setOptimizationState] = useState({
     isGenerating: false,
@@ -168,13 +174,42 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchData = async () => {
     try {
-      const [metrics, aiAlerts, history] = await Promise.all([
-        getLiveMetrics(),
+      const [latestMetric, aiAlerts, history] = await Promise.all([
+        getLatestMetric(),
         getAiAlerts(),
-        getMetricsHistory(),
+        getMetricsHistory(50),
       ]);
 
-      if (metrics) setLiveMetrics(metrics);
+      if (latestMetric) {
+        setLiveMetrics({
+          kilnTemperature: latestMetric.kiln_temp,
+          feedRate: latestMetric.feed_rate,
+          lsf: latestMetric.lsf,
+          cao: latestMetric.cao,
+          sio2: latestMetric.sio2,
+          al2o3: latestMetric.al2o3,
+          fe2o3: latestMetric.fe2o3,
+          c3s: latestMetric.c3s,
+          c2s: latestMetric.c2s,
+          c3a: latestMetric.c3a,
+          c4af: latestMetric.c4af,
+        });
+      } else {
+        setLiveMetrics({
+          kilnTemperature: 1450,
+          feedRate: 220,
+          lsf: 96,
+          cao: 44,
+          sio2: 14,
+          al2o3: 3.5,
+          fe2o3: 2.5,
+          c3s: 65,
+          c2s: 15,
+          c3a: 9,
+          c4af: 8,
+        });
+      }
+
       if (aiAlerts) {
         const typedAlerts: Alert[] = aiAlerts.map(alert => ({
           ...alert, severity: alert.severity as 'CRITICAL' | 'WARNING' }));
@@ -407,10 +442,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [plantRunning]);
 
   useEffect(() => {
-    fetchData();
-    const pollInterval = setInterval(fetchData, 5000);
-    return () => clearInterval(pollInterval);
-  }, []);
+    if (plantRunning) {
+      fetchData();
+      const pollInterval = setInterval(fetchData, 5000);
+      return () => clearInterval(pollInterval);
+    }
+  }, [plantRunning]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -440,9 +477,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         metricsHistory,
         chartData,
         loading,
+        plantStatus,
         refreshData: fetchData,
         startPlant: async () => {
           setPlantRunning(true);
+          setManualStatus('RUNNING');
           try {
             await fetchData();
             toast({ title: 'Plant started', description: 'Data ingestion resumed.' });
@@ -451,13 +490,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
             toast({ title: 'Start failed', description: 'Could not fetch data after starting.', variant: 'destructive' });
           }
         },
-        stopPlant: () => {
+        stopPlant: async () => {
           setPlantRunning(false);
-          toast({ title: 'Plant stopped', description: 'Data ingestion paused.' });
+          setManualStatus('STOPPED');
+          try {
+            await fetchData();
+            toast({ title: 'Plant stopped', description: 'Data ingestion paused.' });
+          } catch (e) {
+            console.error('stopPlant failed to fetch data', e);
+            toast({ title: 'Stop failed', description: 'Could not fetch data after stopping.', variant: 'destructive' });
+          }
         },
-        emergencyStop: () => {
+        emergencyStop: async () => {
           setPlantRunning(false);
-          toast({ title: 'EMERGENCY STOP', description: 'All systems halted. Check plant immediately.', variant: 'destructive' });
+          setManualStatus('EMERGENCY');
+          try {
+            await fetchData();
+            toast({ title: 'EMERGENCY STOP', description: 'All systems halted. Check plant immediately.', variant: 'destructive' });
+          } catch (e) {
+            console.error('emergencyStop failed to fetch data', e);
+            toast({ title: 'Emergency stop failed', description: 'Could not fetch data after emergency stop.', variant: 'destructive' });
+          }
         },
         pendingOptimization: optimizationState,
         startOptimization,
@@ -477,4 +530,34 @@ export function useData() {
     throw new Error('useData must be used within a DataProvider');
   }
   return context;
+}
+
+function usePlantStatus(
+  liveMetrics: LiveMetrics | null,
+  loading: boolean,
+  manualStatus: 'RUNNING' | 'STOPPED' | 'EMERGENCY' | null
+): 'RUNNING' | 'STOPPED' | 'EMERGENCY' | 'FAULT' | 'LOADING' {
+  if (manualStatus) {
+    return manualStatus;
+  }
+
+  if (loading) {
+    return 'LOADING';
+  }
+
+  if (!liveMetrics) {
+    return 'STOPPED';
+  }
+
+  if (liveMetrics.kilnTemperature < 1300 || liveMetrics.kilnTemperature > 1500) {
+    return 'EMERGENCY';
+  }
+  if (liveMetrics.lsf < 90 || liveMetrics.lsf > 102) {
+    return 'FAULT';
+  }
+  if (liveMetrics.kilnTemperature >= 1300 && liveMetrics.kilnTemperature <= 1500) {
+    return 'RUNNING';
+  }
+
+  return 'STOPPED';
 }

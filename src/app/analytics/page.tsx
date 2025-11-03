@@ -13,7 +13,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { formatNumber } from '@/lib/formatters';
 import {
   Flame,
   Gauge,
@@ -21,149 +20,103 @@ import {
   TestTube,
   TrendingUp,
 } from 'lucide-react';
+import { LiveMetrics, ProductionMetric } from '@/context/DataProvider';
 
 const MAX_POINTS = 50;
 
-export default function AnalyticsPage() {
-  const { liveMetrics, metricsHistory, loading } = useData();
-  const [activeTab, setActiveTab] = useState('tab1');
+function getMetric(metrics: LiveMetrics | ProductionMetric, key: string): number | undefined {
+    const keys = [
+        key,
+        key.replace(/([A-Z])/g, '_$1').toLowerCase(),
+        key.replace(/_([a-z])/g, (g) => g[1].toUpperCase()),
+        key === 'kilnTemperature' ? 'kiln_temp' : null,
+        key === 'feedRate' ? 'feed_rate' : null
+    ].filter(Boolean) as string[];
 
+    for (const k of keys) {
+        if (k in metrics) {
+            return (metrics as any)[k];
+        }
+    }
+
+    return undefined;
+}
+
+function formatNumber(value: number, options: { decimals?: number } = {}) {
+  const { decimals = 0 } = options;
+  return value.toFixed(decimals);
+}
+
+// Custom hook for live chart data management
+function useLiveChartData(metricKey: string, metricsHistory: any[]) {
   const [chartData, setChartData] = useState<any[]>([]);
-  const lastProcessedIdRef = useRef<number |string| null>(null);
-  const chartInitializedRef = useRef(false);
+  const lastProcessedTimestampRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!metricsHistory || metricsHistory.length === 0) return;
-
-    const newest = metricsHistory[metricsHistory.length - 1];
-    const newestId = newest.id || newest.timestamp;
-
-    if (lastProcessedIdRef.current === newestId) return;
-
-    if (!chartInitializedRef.current) {
-      chartInitializedRef.current = true;
-      
-      const sortedMetrics = [...metricsHistory]
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-        .slice(-MAX_POINTS);
-      
-      const initial = sortedMetrics.map((metric) => ({
-        time: new Date(metric.timestamp).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-        }),
-        timestamp: new Date(metric.timestamp).getTime(),
-        kilnTemp: metric.kiln_temp,
-        feedRate: metric.feed_rate,
-        lsf: metric.lsf,
-        cao: metric.cao,
-        sio2: metric.sio2,
-        al2o3: metric.al2o3,
-        fe2o3: metric.fe2o3,
-        c3s: metric.c3s,
-        c2s: metric.c2s,
-        c3a: metric.c3a,
-        c4af: metric.c4af,
-      }));
-      
-      setChartData(initial);
-      lastProcessedIdRef.current = newestId;
+    if (!metricsHistory || metricsHistory.length === 0) {
       return;
     }
 
-    const newPoint = {
-      time: new Date(newest.timestamp).toLocaleTimeString('en-US', {
+    const newMetrics = lastProcessedTimestampRef.current
+      ? metricsHistory.filter(m => m.timestamp > lastProcessedTimestampRef.current!)
+      : metricsHistory;
+
+    if (newMetrics.length === 0) {
+      return;
+    }
+
+    newMetrics.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    const newPoints = newMetrics.map(metric => ({
+      time: new Date(metric.timestamp).toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
       }),
-      timestamp: new Date(newest.timestamp).getTime(),
-      kilnTemp: newest.kiln_temp,
-      feedRate: newest.feed_rate,
-      lsf: newest.lsf,
-      cao: newest.cao,
-      sio2: newest.sio2,
-      al2o3: newest.al2o3,
-      fe2o3: newest.fe2o3,
-      c3s: newest.c3s,
-      c2s: newest.c2s,
-      c3a: newest.c3a,
-      c4af: newest.c4af,
-    };
+      value: getMetric(metric, metricKey),
+    }));
 
-    setChartData((prev) => {
-      const updated = [...prev, newPoint].slice(-MAX_POINTS);
-      return updated;
+    setChartData(prevData => {
+      const updatedData = [...prevData, ...newPoints].slice(-MAX_POINTS);
+      if (updatedData.length > 0) {
+        lastProcessedTimestampRef.current = metricsHistory[metricsHistory.length - 1].timestamp;
+      }
+      return updatedData;
     });
 
-    lastProcessedIdRef.current = newestId;
-  }, [metricsHistory]);
+  }, [metricsHistory, metricKey]);
 
-  useEffect(() => {
-    return () => {
-      chartInitializedRef.current = false;
-      lastProcessedIdRef.current = null;
-    };
-  }, []);
+  return chartData;
+}
 
-  if (loading) {
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
     return (
-      <div className="p-6 space-y-6">
-        <Skeleton className="h-8 w-64" />
-        <div className="grid grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-96" />
-          ))}
-        </div>
+      <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
+        <p className="text-xs font-mono text-muted-foreground mb-2">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <div key={index} className="flex items-center justify-between gap-4">
+            <span className="text-xs font-medium" style={{ color: entry.color }}>
+              {entry.name}:
+            </span>
+            <span className="text-xs font-bold font-mono text-foreground">
+              {formatNumber(entry.value, { decimals: 2 })}
+            </span>
+          </div>
+        ))}
       </div>
     );
   }
+  return null;
+};
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
-          <p className="text-xs font-mono text-muted-foreground mb-2">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center justify-between gap-4">
-              <span className="text-xs font-medium" style={{ color: entry.color }}>
-                {entry.name}:
-              </span>
-              <span className="text-xs font-bold font-mono text-foreground">
-                {formatNumber(entry.value, { decimals: 2 })}
-              </span>
-            </div>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
+const MetricCard = React.memo(({ metricKey, label, unit, color, icon: Icon, metricsHistory, liveMetrics }: any) => {
+    const chartData = useLiveChartData(metricKey, metricsHistory);
 
-  const MetricCard = ({ metricKey, label, unit, color, icon: Icon }: any) => {
-    const getLiveMetricValue = () => {
-      if (!liveMetrics) return undefined;
+    const currentValue = liveMetrics ? getMetric(liveMetrics, metricKey) : undefined;
 
-      const aliasMap: Record<string, string> = {
-        kilnTemp: 'kilnTemperature',
-      };
-
-      const snake = metricKey.replace(/([A-Z])/g, '_$1').toLowerCase();
-      const tryKeys = [metricKey, aliasMap[metricKey], snake];
-
-      for (const k of tryKeys) {
-        if (!k) continue;
-        const v = (liveMetrics as any)[k];
-        if (v !== undefined) return v;
-      }
-
-      return undefined;
-    };
-
-    const currentValue = getLiveMetricValue();
-
-    const dataValues = chartData.map(d => d[metricKey]).filter(v => v !== undefined && v !== null);
+    // Calculate dynamic y-axis domain with padding
+    const dataValues = chartData.map(d => d.value).filter(v => v !== undefined && v !== null);
     const minVal = dataValues.length > 0 ? Math.min(...dataValues) : 0;
     const maxVal = dataValues.length > 0 ? Math.max(...dataValues) : 100;
     const padding = (maxVal - minVal) * 0.1 || 5;
@@ -207,13 +160,13 @@ export default function AnalyticsPage() {
                 style={{ fontSize: '10px', fontFamily: 'var(--font-space-mono)' }}
                 width={45}
                 domain={yDomain}
-                tickCount={5}
+                tickCount={8}
                 tickFormatter={formatYAxis}
               />
               <Tooltip content={<CustomTooltip />} />
               <Line
                 type="monotone"
-                dataKey={metricKey}
+                dataKey="value"
                 stroke={color}
                 strokeWidth={2}
                 name={label}
@@ -225,7 +178,26 @@ export default function AnalyticsPage() {
         </CardContent>
       </Card>
     );
-  };
+});
+
+export default function AnalyticsPage() {
+  const { liveMetrics, metricsHistory, loading } = useData();
+  const [activeTab, setActiveTab] = useState('tab1');
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-8 w-64" />
+        <div className="grid grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-96" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+
 
   return (
     <div className="p-6 space-y-6">
@@ -258,11 +230,13 @@ export default function AnalyticsPage() {
         <TabsContent value="tab1" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <MetricCard
-              metricKey="kilnTemp"
+              metricKey="kilnTemperature"
               label="Kiln Temperature"
               unit="°C"
               color="hsl(var(--primary))"
               icon={Flame}
+              metricsHistory={metricsHistory}
+              liveMetrics={liveMetrics}
             />
             <MetricCard
               metricKey="feedRate"
@@ -270,6 +244,8 @@ export default function AnalyticsPage() {
               unit="TPH"
               color="hsl(var(--chart-blue))"
               icon={Gauge}
+              metricsHistory={metricsHistory}
+              liveMetrics={liveMetrics}
             />
             <MetricCard
               metricKey="lsf"
@@ -277,6 +253,8 @@ export default function AnalyticsPage() {
               unit="%"
               color="hsl(var(--chart-purple))"
               icon={Beaker}
+              metricsHistory={metricsHistory}
+              liveMetrics={liveMetrics}
             />
           </div>
         </TabsContent>
@@ -289,6 +267,8 @@ export default function AnalyticsPage() {
               unit="%"
               color="hsl(var(--chart-blue))"
               icon={TestTube}
+              metricsHistory={metricsHistory}
+              liveMetrics={liveMetrics}
             />
             <MetricCard
               metricKey="sio2"
@@ -296,6 +276,8 @@ export default function AnalyticsPage() {
               unit="%"
               color="hsl(var(--chart-purple))"
               icon={TestTube}
+              metricsHistory={metricsHistory}
+              liveMetrics={liveMetrics}
             />
             <MetricCard
               metricKey="al2o3"
@@ -303,6 +285,8 @@ export default function AnalyticsPage() {
               unit="%"
               color="hsl(var(--chart-yellow))"
               icon={TestTube}
+              metricsHistory={metricsHistory}
+              liveMetrics={liveMetrics}
             />
             <MetricCard
               metricKey="fe2o3"
@@ -310,6 +294,8 @@ export default function AnalyticsPage() {
               unit="%"
               color="hsl(var(--chart-orange))"
               icon={TestTube}
+              metricsHistory={metricsHistory}
+              liveMetrics={liveMetrics}
             />
           </div>
         </TabsContent>
@@ -322,6 +308,8 @@ export default function AnalyticsPage() {
               unit="%"
               color="hsl(var(--primary))"
               icon={Beaker}
+              metricsHistory={metricsHistory}
+              liveMetrics={liveMetrics}
             />
             <MetricCard
               metricKey="c2s"
@@ -329,6 +317,8 @@ export default function AnalyticsPage() {
               unit="%"
               color="hsl(var(--chart-blue))"
               icon={Beaker}
+              metricsHistory={metricsHistory}
+              liveMetrics={liveMetrics}
             />
             <MetricCard
               metricKey="c3a"
@@ -336,6 +326,8 @@ export default function AnalyticsPage() {
               unit="%"
               color="hsl(var(--chart-purple))"
               icon={Beaker}
+              metricsHistory={metricsHistory}
+              liveMetrics={liveMetrics}
             />
             <MetricCard
               metricKey="c4af"
@@ -343,6 +335,8 @@ export default function AnalyticsPage() {
               unit="%"
               color="hsl(var(--chart-orange))"
               icon={Beaker}
+              metricsHistory={metricsHistory}
+              liveMetrics={liveMetrics}
             />
           </div>
         </TabsContent>

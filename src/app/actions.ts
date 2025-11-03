@@ -19,65 +19,9 @@ import { Action } from 'genkit';
 // This ensures we can trigger optimization
 import { activateOptimizationTarget } from '@/app/api/ingest/route';
 
-export async function getLiveMetrics() {
-  try {
-    const latestMetric = await getLatestMetric();
 
-    if (!latestMetric) {
-      return {
-        kilnTemperature: 1450,
-        feedRate: 220,
-        lsf: 96,
-        cao: 44,
-        sio2: 14,
-        al2o3: 3.5,
-        fe2o3: 2.5,
-        c3s: 65,
-        c2s: 15,
-        c3a: 9,
-        c4af: 8,
-      };
-    }
-    return {
-      kilnTemperature: latestMetric.kiln_temp,
-      feedRate: latestMetric.feed_rate,
-      lsf: latestMetric.lsf,
-      cao: latestMetric.cao,
-      sio2: latestMetric.sio2,
-      al2o3: latestMetric.al2o3,
-      fe2o3: latestMetric.fe2o3,
-      c3s: latestMetric.c3s,
-      c2s: latestMetric.c2s,
-      c3a: latestMetric.c3a,
-      c4af: latestMetric.c4af,
-    };
-  } catch (e: any) {
-    console.error('Failed to get live metrics:', e);
-    return {
-      kilnTemperature: 1450,
-      feedRate: 220,
-      lsf: 96,
-      cao: 44,
-      sio2: 14,
-      al2o3: 3.5,
-      fe2o3: 2.5,
-      c3s: 65,
-      c2s: 15,
-      c3a: 9,
-      c4af: 8,
-    };
-  }
-}
 
-export async function getMetricsHistory() {
-  try {
-    const history = await getMetricsHistoryFromDB(50);
-    return history ?? [];
-  } catch (e: any) {
-    console.error('Failed to get metrics history:', e);
-    return [];
-  }
-}
+
 
 const optimizationSchema = z.object({
   kilnTemperature: z.string(),
@@ -176,7 +120,35 @@ export async function runOptimization(prevState: any, formData: FormData) {
 
 export async function getAiAlerts() {
   try {
-    const liveMetrics = await getLiveMetrics();
+    const latestMetric = await getLatestMetric();
+    const liveMetrics = latestMetric
+      ? {
+          kilnTemperature: latestMetric.kiln_temp,
+          feedRate: latestMetric.feed_rate,
+          lsf: latestMetric.lsf,
+          cao: latestMetric.cao,
+          sio2: latestMetric.sio2,
+          al2o3: latestMetric.al2o3,
+          fe2o3: latestMetric.fe2o3,
+          c3s: latestMetric.c3s,
+          c2s: latestMetric.c2s,
+          c3a: latestMetric.c3a,
+          c4af: latestMetric.c4af,
+        }
+      : {
+          kilnTemperature: 1450,
+          feedRate: 220,
+          lsf: 96,
+          cao: 44,
+          sio2: 14,
+          al2o3: 3.5,
+          fe2o3: 2.5,
+          c3s: 65,
+          c2s: 15,
+          c3a: 9,
+          c4af: 8,
+        };
+
     const alertResponse = await generateAlerts({
       kilnTemperature: liveMetrics.kilnTemperature,
       lsf: liveMetrics.lsf,

@@ -63,7 +63,7 @@ export function RecommendationCard() {
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <div className="space-y-2 text-xs text-muted-foreground">
+              <div className="space-y-2 text-xs text-muted-foreground mt-3">
                 <p className="flex items-center gap-2">
                   <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
                   Analyzing current plant composition
@@ -77,9 +77,6 @@ export function RecommendationCard() {
                   Generating AI recommendations
                 </p>
               </div>
-              <p className="text-xs text-muted-foreground text-center">
-                You can navigate to other pages - this will continue in the background
-              </p>
             </div>
           </div>
         </CardContent>

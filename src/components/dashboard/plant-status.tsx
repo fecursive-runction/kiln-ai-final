@@ -5,27 +5,23 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useData } from '@/context/DataProvider';
 import { Play, Square, AlertTriangle, Flame } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { useState } from 'react';
 
 export function PlantStatus() {
-  const { liveMetrics, loading, startPlant, stopPlant, emergencyStop } = useData();
-
-  const getPlantStatus = () => {
-    if (loading) return 'LOADING';
-    if (!liveMetrics) return 'STOPPED';
-
-    if (liveMetrics.kilnTemperature < 1420 || liveMetrics.kilnTemperature > 1480) {
-      return 'EMERGENCY';
-    }
-    if (liveMetrics.lsf < 92 || liveMetrics.lsf > 100) {
-      return 'FAULT';
-    }
-    if (liveMetrics.kilnTemperature >= 1420 && liveMetrics.kilnTemperature <= 1480) {
-      return 'RUNNING';
-    }
-    return 'STOPPED';
-  };
-
-  const plantStatus = getPlantStatus();
+  const { plantStatus, loading, startPlant, stopPlant, emergencyStop } = useData();
+  const [isEmergencyStopOpen, setIsEmergencyStopOpen] = useState(false);
+  const [isStopPlantOpen, setIsStopPlantOpen] = useState(false);
 
   const getStatusVariant = () => {
     switch (plantStatus) {
@@ -69,26 +65,57 @@ export function PlantStatus() {
             Start Plant
           </Button>
 
-          <Button
-            variant="warning"
-            className="w-full text-sm md:text-base"
-            size="default"
-            disabled={plantStatus === 'STOPPED' || loading}
-            onClick={() => stopPlant()}
-          >
-            <Square className="w-4 h-4 mr-2" />
-            Stop Plant
-          </Button>
+          <AlertDialog open={isStopPlantOpen} onOpenChange={setIsStopPlantOpen}>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="warning"
+                className="w-full text-sm md:text-base"
+                size="default"
+                disabled={plantStatus === 'STOPPED' || loading}
+              >
+                <Square className="w-4 h-4 mr-2" />
+                Stop Plant
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure you want to stop the plant?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will pause data ingestion. You can restart the plant at any time.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={async () => await stopPlant()}>Confirm</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
-          <Button
-            variant="destructive"
-            className="w-full text-sm md:text-base"
-            size="default"
-            onClick={() => emergencyStop()}
-          >
-            <AlertTriangle className="w-4 h-4 mr-2" />
-            Emergency Stop
-          </Button>
+          <AlertDialog open={isEmergencyStopOpen} onOpenChange={setIsEmergencyStopOpen}>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="destructive"
+                className="w-full text-sm md:text-base"
+                size="default"
+                disabled={plantStatus === 'STOPPED' || loading}
+              >
+                <AlertTriangle className="w-4 h-4 mr-2" />
+                Emergency Stop
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will immediately stop all plant operations. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={async () => await emergencyStop()}>Confirm</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </CardContent>
     </Card>

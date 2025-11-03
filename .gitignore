@@ -1,36 +1,48 @@
-.env
-.env*.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-
-kiln.db
-*.db
-*.db-journal
-
+# Dependencies
 /node_modules
+/.pnp
+.pnp.js
 
+# Testing
+/coverage
+
+# Next.js build output
 /.next/
 /out/
 
-.next/cache
-
+# Production build files
 /build
 
+# Static exports
 /export
 
+# Dumps
 /dumps
 
-tsconfig.tsbuildinfo
-.modified
+# Other
+.DS_Store
+*.pem
 
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Local .env files
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Databases
+kiln.db
+*.db
+*.db-journal
+
+# IDEs and editors
 .idea
 .vscode
 *.suo
@@ -39,7 +51,9 @@ pnpm-debug.log*
 *.sln
 *.sw?
 
-.firebase/
-firebase-debug.log
+# Genkit
+/.genkit/
 
-/.genkit
+# TypeScript
+tsconfig.tsbuildinfo
+.modified

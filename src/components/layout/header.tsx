@@ -12,7 +12,7 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick, isSidebarOpen }: HeaderProps) {
-  const { liveMetrics, loading } = useData();
+  const { plantStatus } = useData();
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -22,24 +22,6 @@ export function Header({ onMenuClick, isSidebarOpen }: HeaderProps) {
 
     return () => clearInterval(timer);
   }, []);
-
-  const getPlantStatus = () => {
-    if (loading) return 'LOADING';
-    if (!liveMetrics) return 'STOPPED';
-
-    if (liveMetrics.kilnTemperature < 1420 || liveMetrics.kilnTemperature > 1480) {
-      return 'EMERGENCY';
-    }
-    if (liveMetrics.lsf < 92 || liveMetrics.lsf > 100) {
-      return 'FAULT';
-    }
-    if (liveMetrics.kilnTemperature >= 1420 && liveMetrics.kilnTemperature <= 1480) {
-      return 'RUNNING';
-    }
-    return 'STOPPED';
-  };
-
-  const plantStatus = getPlantStatus();
 
   const getStatusVariant = () => {
     switch (plantStatus) {
