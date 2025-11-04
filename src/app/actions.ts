@@ -200,27 +200,38 @@ export async function applyOptimization(prevState: any, formData: FormData) {
   const limestoneAdj = parseFloat(limestoneAdjStr.replace('%', '')) / 100;
   const clayAdj = parseFloat(clayAdjStr.replace('%', '')) / 100;
 
+  // Calculate new temperature based on LSF change
+  const lsfDiff = predictedLSF - originalMetrics.lsf;
+  let tempAdj = 0;
+  if (Math.abs(lsfDiff) > 3) tempAdj = lsfDiff > 0 ? 10 : -10;
+  else if (Math.abs(lsfDiff) > 1) tempAdj = lsfDiff > 0 ? 5 : -5;
+  
+  const newTemperature = Math.max(1420, Math.min(1480, originalMetrics.kilnTemperature + tempAdj));
+
   console.log('[APPLY] Current State:');
   console.log('[APPLY]   LSF:', originalMetrics.lsf.toFixed(2), '%');
+  console.log('[APPLY]   Temperature:', originalMetrics.kilnTemperature.toFixed(1), '°C');
   console.log('[APPLY]   CaO:', originalMetrics.cao.toFixed(2), '%');
   console.log('[APPLY]   SiO2:', originalMetrics.sio2.toFixed(2), '%');
-  console.log('[APPLY]   Temperature:', originalMetrics.kilnTemperature.toFixed(1), '°C');
+  console.log('[APPLY]   Feed Rate:', originalMetrics.feedRate.toFixed(1), 'TPH');
   console.log('[APPLY] ───────────────────────────────────────');
   console.log('[APPLY] Target State:');
   console.log('[APPLY]   LSF:', predictedLSF.toFixed(2), '% (Δ', (predictedLSF - originalMetrics.lsf).toFixed(2), '%)');
+  console.log('[APPLY]   Temperature:', newTemperature.toFixed(1), '°C (Δ', (newTemperature - originalMetrics.kilnTemperature).toFixed(1), '°C)');
   console.log('[APPLY]   Limestone adjustment:', (limestoneAdj * 100).toFixed(2), '%');
   console.log('[APPLY]   Clay adjustment:', (clayAdj * 100).toFixed(2), '%');
   console.log('[APPLY]   Feed rate:', newFeedRate.toFixed(1), 'TPH');
   console.log('[APPLY] ───────────────────────────────────────');
 
   try {
-    // CRITICAL: Directly call the activation function
+    // CRITICAL: Directly call the activation function with calculated temperature
     console.log('[APPLY] 🎯 Calling activateOptimizationTarget...');
     await activateOptimizationTarget(
       predictedLSF,
       newFeedRate,
       limestoneAdj,
-      clayAdj
+      clayAdj,
+      newTemperature  // Pass the calculated temperature
     );
     console.log('[APPLY] ✅ activateOptimizationTarget completed successfully');
 
@@ -229,12 +240,12 @@ export async function applyOptimization(prevState: any, formData: FormData) {
     console.log('[APPLY] 🔄 Data ingestion now controlled by optimizer');
     console.log('[APPLY] ⏱️  Expected completion: ~3.3 minutes (40 ticks @ 5s)');
     console.log('[APPLY] 📊 Watch the Dashboard/Analytics for real-time convergence');
-    console.log('[APPLY] 📝 Check browser console for tick-by-tick logs');
+    console.log('[APPLY] 📝 All parameters will converge smoothly');
     console.log('[APPLY] ═══════════════════════════════════════');
 
     return { 
       success: true, 
-      message: `Optimization activated! System converging from ${originalMetrics.lsf.toFixed(1)}% to ${predictedLSF.toFixed(1)}% LSF. Monitor the dashboard for smooth, direct convergence over the next 3.3 minutes.` 
+      message: `Optimization activated! System converging from ${originalMetrics.lsf.toFixed(1)}% to ${predictedLSF.toFixed(1)}% LSF and ${originalMetrics.kilnTemperature.toFixed(1)}°C to ${newTemperature.toFixed(1)}°C. All parameters will adjust smoothly over the next 3.3 minutes.` 
     };
   } catch (error: any) {
     console.error('[APPLY] ❌ FAILED:', error);

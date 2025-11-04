@@ -1,3 +1,5 @@
+// src/components/optimize/recommendation-card.tsx
+// Replace the ENTIRE file with this:
 'use client';
 
 import { useData } from '@/context/DataProvider';
@@ -16,6 +18,83 @@ import {
   Loader2,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+// Helper function to render markdown
+const renderMarkdown = (text: string) => {
+  const paragraphs = text.split('\n\n');
+  
+  return paragraphs.map((paragraph, pIdx) => {
+    const lines = paragraph.split('\n');
+    const isBulletList = lines.some(line => /^[-*]\s+/.test(line.trim()));
+    
+    if (isBulletList) {
+      return (
+        <ul key={pIdx} className="list-disc list-inside space-y-1 my-2 ml-4">
+          {lines.filter(line => line.trim()).map((line, lIdx) => {
+            const cleanedLine = line.trim().replace(/^[-*]\s+/, '');
+            return (
+              <li key={lIdx} className="leading-relaxed">
+                <span className="ml-2">{formatInlineMarkdown(cleanedLine)}</span>
+              </li>
+            );
+          })}
+        </ul>
+      );
+    }
+    
+    return (
+      <p key={pIdx} className="my-2 leading-relaxed">
+        {formatInlineMarkdown(paragraph)}
+      </p>
+    );
+  });
+};
+
+const formatInlineMarkdown = (text: string) => {
+  const parts: (string | JSX.Element)[] = [];
+  let remaining = text;
+  let key = 0;
+
+  while (remaining.length > 0) {
+    // Bold (**text**)
+    const boldMatch = remaining.match(/^\*\*(.+?)\*\*/);
+    if (boldMatch) {
+      parts.push(
+        <strong key={key++} className="font-bold text-foreground">
+          {boldMatch[1]}
+        </strong>
+      );
+      remaining = remaining.slice(boldMatch[0].length);
+      continue;
+    }
+
+    // Italic (*text*)
+    const italicMatch = remaining.match(/^\*([^*]+?)\*/);
+    if (italicMatch) {
+      parts.push(
+        <em key={key++} className="italic text-foreground">
+          {italicMatch[1]}
+        </em>
+      );
+      remaining = remaining.slice(italicMatch[0].length);
+      continue;
+    }
+
+    const nextAsterisk = remaining.indexOf('*');
+    if (nextAsterisk === -1) {
+      parts.push(remaining);
+      break;
+    } else if (nextAsterisk === 0) {
+      parts.push(remaining[0]);
+      remaining = remaining.slice(1);
+    } else {
+      parts.push(remaining.slice(0, nextAsterisk));
+      remaining = remaining.slice(nextAsterisk);
+    }
+  }
+
+  return parts.length > 0 ? <>{parts}</> : text;
+};
 
 export function RecommendationCard() {
   const { 
@@ -70,7 +149,7 @@ export function RecommendationCard() {
                 </p>
                 <p className="flex items-center gap-2">
                   <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-                  Calculating optimal raw mix adjustments
+                  Calculating optimal adjustments for all parameters
                 </p>
                 <p className="flex items-center gap-2">
                   <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
@@ -141,7 +220,7 @@ export function RecommendationCard() {
         </CardHeader>
 
         <CardContent className="p-6 space-y-6">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="border-border/50 bg-secondary/30">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3 mb-2">
@@ -209,9 +288,9 @@ export function RecommendationCard() {
                   Detailed Explanation
                 </h4>
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                {recommendation.explanation}
-              </p>
+              <div className="text-sm text-muted-foreground leading-relaxed">
+                {renderMarkdown(recommendation.explanation)}
+              </div>
             </CardContent>
           </Card>
 

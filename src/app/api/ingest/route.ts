@@ -1,4 +1,3 @@
-// src/app/api/ingest/route.ts - Database-persisted optimization state
 'use server';
 
 import { NextResponse } from 'next/server';
@@ -23,11 +22,6 @@ const calculateLSF = (cao: number, sio2: number, al2o3: number, fe2o3: number) =
   const denominator = 2.8 * sio2 + 1.18 * al2o3 + 0.65 * fe2o3;
   if (denominator === 0) return 0;
   return (cao / denominator) * 100;
-};
-
-const calculateCaoFromLSF = (targetLSF: number, sio2: number, al2o3: number, fe2o3: number): number => {
-  const denominator = 2.8 * sio2 + 1.18 * al2o3 + 0.65 * fe2o3;
-  return (targetLSF / 100) * denominator;
 };
 
 const KILN_TEMP_CRITICAL_HIGH = 1490;
@@ -71,14 +65,15 @@ async function clearOptimizationState() {
   await saveOptimizationState({ active: false });
 }
 
-/**
- * Activate optimization - saves state to database for persistence
- */
+
+ 
+
 export async function activateOptimizationTarget(
   predictedLSF: number,
   feedRateSetpoint: number,
   limestoneAdj: number,
-  clayAdj: number
+  clayAdj: number,
+  targetTemperature?: number
 ) {
   const currentMetric = await getLatestMetric();
   if (!currentMetric) {
@@ -86,30 +81,45 @@ export async function activateOptimizationTarget(
     return;
   }
 
+  // Calculate all target values based on adjustments
   const targetCaO = currentMetric.cao * (1 + limestoneAdj);
   const targetSiO2 = currentMetric.sio2 * (1 + clayAdj);
   const targetAl2O3 = currentMetric.al2o3 * (1 + clayAdj * 0.5);
+  // Fe2O3 stays constant - we don't store it as target
   
-  const lsfDiff = predictedLSF - currentMetric.lsf;
-  let tempAdjustment = 0;
-  
-  if (Math.abs(lsfDiff) > 5) {
-    tempAdjustment = lsfDiff > 0 ? 20 : -20;
-  } else if (Math.abs(lsfDiff) > 3) {
-    tempAdjustment = lsfDiff > 0 ? 12 : -12;
-  } else if (Math.abs(lsfDiff) > 1) {
-    tempAdjustment = lsfDiff > 0 ? 6 : -6;
+  // Use provided temperature or calculate it
+  let targetKilnTemp: number;
+  if (targetTemperature !== undefined) {
+    targetKilnTemp = targetTemperature;
   } else {
-    tempAdjustment = lsfDiff > 0 ? 3 : -3;
+    const lsfDiff = predictedLSF - currentMetric.lsf;
+    let tempAdjustment = 0;
+    
+    if (Math.abs(lsfDiff) > 5) {
+      tempAdjustment = lsfDiff > 0 ? 20 : -20;
+    } else if (Math.abs(lsfDiff) > 3) {
+      tempAdjustment = lsfDiff > 0 ? 12 : -12;
+    } else if (Math.abs(lsfDiff) > 1) {
+      tempAdjustment = lsfDiff > 0 ? 6 : -6;
+    } else {
+      tempAdjustment = lsfDiff > 0 ? 3 : -3;
+    }
+    
+    targetKilnTemp = currentMetric.kiln_temp + tempAdjustment;
   }
   
-  const targetKilnTemp = Math.max(1420, Math.min(1470, currentMetric.kiln_temp + tempAdjustment));
+  // Ensure temperature stays within safe bounds
+  targetKilnTemp = Math.max(1420, Math.min(1480, targetKilnTemp));
 
   const optimizationState = {
     active: true,
     target_lsf: predictedLSF,
     target_feed_rate: feedRateSetpoint,
     target_kiln_temp: targetKilnTemp,
+    target_cao: targetCaO,
+    target_sio2: targetSiO2,
+    target_al2o3: targetAl2O3,
+    // Removed target_fe2o3 - not in database schema
     ticks_remaining: 40,
     total_ticks: 40,
     starting_lsf: currentMetric.lsf,
@@ -119,9 +129,6 @@ export async function activateOptimizationTarget(
     starting_fe2o3: currentMetric.fe2o3,
     starting_feed_rate: currentMetric.feed_rate,
     starting_kiln_temp: currentMetric.kiln_temp,
-    target_cao: targetCaO,
-    target_sio2: targetSiO2,
-    target_al2o3: targetAl2O3,
     limestone_adj: limestoneAdj,
     clay_adj: clayAdj,
   };
@@ -129,19 +136,19 @@ export async function activateOptimizationTarget(
   await saveOptimizationState(optimizationState);
 
   console.log('[OPT] ═══════════════════════════════════════════════════════');
-  console.log('[OPT] 🎯 OPTIMIZATION MODE ACTIVATED - DATABASE PERSISTED');
+  console.log('[OPT] 🎯 MULTI-VARIABLE OPTIMIZATION ACTIVATED');
   console.log('[OPT] ═══════════════════════════════════════════════════════');
   console.log('[OPT] Starting State:');
   console.log('[OPT]   LSF:  ', currentMetric.lsf.toFixed(2), '% →', predictedLSF.toFixed(2), '% (Δ', (predictedLSF - currentMetric.lsf).toFixed(2), '%)');
   console.log('[OPT]   CaO:  ', currentMetric.cao.toFixed(2), '% →', targetCaO.toFixed(2), '% (', (limestoneAdj * 100).toFixed(1), '%)');
   console.log('[OPT]   SiO2: ', currentMetric.sio2.toFixed(2), '% →', targetSiO2.toFixed(2), '% (', (clayAdj * 100).toFixed(1), '%)');
   console.log('[OPT]   Al2O3:', currentMetric.al2o3.toFixed(2), '% →', targetAl2O3.toFixed(2), '% (', (clayAdj * 50).toFixed(1), '%)');
-  console.log('[OPT]   Temp: ', currentMetric.kiln_temp.toFixed(1), '°C →', targetKilnTemp.toFixed(1), '°C');
+  console.log('[OPT]   Temp: ', currentMetric.kiln_temp.toFixed(1), '°C →', targetKilnTemp.toFixed(1), '°C (Δ', (targetKilnTemp - currentMetric.kiln_temp).toFixed(1), '°C)');
   console.log('[OPT]   Feed: ', currentMetric.feed_rate.toFixed(1), 'TPH →', feedRateSetpoint.toFixed(1), 'TPH');
+  console.log('[OPT]   Fe2O3:', currentMetric.fe2o3.toFixed(2), '% (constant)');
   console.log('[OPT] ───────────────────────────────────────────────────────');
   console.log('[OPT] Duration: 40 ticks (~3.3 minutes at 5s intervals)');
-  console.log('[OPT] Method: Direct LSF interpolation with database persistence');
-  console.log('[OPT] State saved to database - survives server restarts');
+  console.log('[OPT] Method: Multi-variable convergence with safety constraints');
   console.log('[OPT] ═══════════════════════════════════════════════════════');
 }
 
@@ -199,45 +206,50 @@ export async function POST() {
     let newFe2o3: number;
 
     // ═══════════════════════════════════════════════════════════════════
-    // OPTIMIZATION MODE - Database-backed, survives restarts
+    // OPTIMIZATION MODE - Multi-variable convergence
     // ═══════════════════════════════════════════════════════════════════
     if (optState?.active && optState.ticks_remaining > 0) {
       const tickNumber = optState.total_ticks - optState.ticks_remaining + 1;
       const progress = tickNumber / optState.total_ticks;
       const easeProgress = easeInOutCubic(progress);
 
-      // Direct LSF interpolation (prevents oscillation)
-      newLsf = optState.starting_lsf + 
-               (optState.target_lsf - optState.starting_lsf) * easeProgress;
+      // Interpolate ALL variables smoothly
+      newKilnTemp = optState.starting_kiln_temp + 
+                    (optState.target_kiln_temp - optState.starting_kiln_temp) * easeProgress;
+      
+      newFeedRate = optState.starting_feed_rate + 
+                    (optState.target_feed_rate - optState.starting_feed_rate) * easeProgress;
+      
+      newCao = optState.starting_cao + 
+               (optState.target_cao - optState.starting_cao) * easeProgress;
       
       newSio2 = optState.starting_sio2 + 
                 (optState.target_sio2 - optState.starting_sio2) * easeProgress;
-
+      
       newAl2o3 = optState.starting_al2o3 + 
                  (optState.target_al2o3 - optState.starting_al2o3) * easeProgress;
-
+      
+      // Fe2O3 stays constant (no target_fe2o3 in database)
       newFe2o3 = optState.starting_fe2o3;
 
-      // Back-calculate CaO from target LSF
-      newCao = calculateCaoFromLSF(newLsf, newSio2, newAl2o3, newFe2o3);
+      // Recalculate LSF from current chemical composition
+      newLsf = calculateLSF(newCao, newSio2, newAl2o3, newFe2o3);
 
-      newKilnTemp = optState.starting_kiln_temp + 
-                    (optState.target_kiln_temp - optState.starting_kiln_temp) * easeProgress;
-
-      newFeedRate = optState.starting_feed_rate + 
-                    (optState.target_feed_rate - optState.starting_feed_rate) * easeProgress;
-
+      // Calculate distances to targets
       const lsfDistance = Math.abs(newLsf - optState.target_lsf);
       const caoDistance = Math.abs(newCao - optState.target_cao);
       const sio2Distance = Math.abs(newSio2 - optState.target_sio2);
       const tempDistance = Math.abs(newKilnTemp - optState.target_kiln_temp);
+      const feedDistance = Math.abs(newFeedRate - optState.target_feed_rate);
       
       if (tickNumber % 5 === 0 || tickNumber === 1 || tickNumber === optState.total_ticks) {
         console.log(`[OPT] ─────────── Tick ${tickNumber}/${optState.total_ticks} (${(progress * 100).toFixed(0)}%) ───────────`);
         console.log(`[OPT] LSF:   ${newLsf.toFixed(2)}% → ${optState.target_lsf.toFixed(2)}% (Δ${lsfDistance.toFixed(2)}%)`);
         console.log(`[OPT] CaO:   ${newCao.toFixed(2)}% → ${optState.target_cao.toFixed(2)}% (Δ${caoDistance.toFixed(2)}%)`);
         console.log(`[OPT] SiO2:  ${newSio2.toFixed(2)}% → ${optState.target_sio2.toFixed(2)}% (Δ${sio2Distance.toFixed(2)}%)`);
+        console.log(`[OPT] Al2O3: ${newAl2o3.toFixed(2)}% → ${optState.target_al2o3.toFixed(2)}%`);
         console.log(`[OPT] Temp:  ${newKilnTemp.toFixed(1)}°C → ${optState.target_kiln_temp.toFixed(1)}°C (Δ${tempDistance.toFixed(1)}°C)`);
+        console.log(`[OPT] Feed:  ${newFeedRate.toFixed(1)} TPH → ${optState.target_feed_rate.toFixed(1)} TPH (Δ${feedDistance.toFixed(1)} TPH)`);
       }
 
       // Update database with decremented ticks
@@ -246,12 +258,15 @@ export async function POST() {
         ticks_remaining: optState.ticks_remaining - 1,
       });
 
-      const isLSFAchieved = lsfDistance < 0.2;
-      const isCaoAchieved = caoDistance < 0.1;
-      const isSio2Achieved = sio2Distance < 0.05;
-      const isTempAchieved = tempDistance < 1.5;
+      // Check convergence (all parameters within tolerance)
+      const isLSFAchieved = lsfDistance < 0.3;
+      const isCaoAchieved = caoDistance < 0.15;
+      const isSio2Achieved = sio2Distance < 0.1;
+      const isTempAchieved = tempDistance < 2.0;
+      const isFeedAchieved = feedDistance < 1.0;
       
-      const allTargetsAchieved = isLSFAchieved && isCaoAchieved && isSio2Achieved && isTempAchieved;
+      const allTargetsAchieved = isLSFAchieved && isCaoAchieved && isSio2Achieved && 
+                                 isTempAchieved && isFeedAchieved;
       
       if (optState.ticks_remaining <= 1 || allTargetsAchieved) {
         console.log('[OPT] ═══════════════════════════════════════════════════════');
@@ -259,6 +274,9 @@ export async function POST() {
         console.log('[OPT] ═══════════════════════════════════════════════════════');
         console.log(`[OPT] Final LSF:   ${newLsf.toFixed(2)}% (Target: ${optState.target_lsf.toFixed(2)}%)`);
         console.log(`[OPT] Final CaO:   ${newCao.toFixed(2)}% (Target: ${optState.target_cao.toFixed(2)}%)`);
+        console.log(`[OPT] Final SiO2:  ${newSio2.toFixed(2)}% (Target: ${optState.target_sio2.toFixed(2)}%)`);
+        console.log(`[OPT] Final Temp:  ${newKilnTemp.toFixed(1)}°C (Target: ${optState.target_kiln_temp.toFixed(1)}°C)`);
+        console.log(`[OPT] Final Feed:  ${newFeedRate.toFixed(1)} TPH (Target: ${optState.target_feed_rate.toFixed(1)} TPH)`);
         console.log(`[OPT] Completed in ${tickNumber} ticks`);
         console.log('[OPT] 🔄 Resuming normal data generation');
         console.log('[OPT] ═══════════════════════════════════════════════════════');
@@ -360,7 +378,8 @@ export async function POST() {
           percentage: ((optState.total_ticks - optState.ticks_remaining) / optState.total_ticks * 100).toFixed(0) + '%',
           lsfCurrent: newLsf.toFixed(2),
           lsfTarget: optState.target_lsf.toFixed(2),
-          lsfDelta: Math.abs(newLsf - optState.target_lsf).toFixed(2),
+          tempCurrent: newKilnTemp.toFixed(1),
+          tempTarget: optState.target_kiln_temp.toFixed(1),
         } : null,
         mode: optState?.active ? 'OPTIMIZATION' : 'NORMAL'
       },
